@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Lila AI Buddy v2.2</title>
+    <title>Lila AI Buddy v2.3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&family=Noto+Sans+JP:wght@400;700&display=swap');
@@ -61,16 +61,16 @@
             </div>
             <div class="space-y-6">
                 <div>
-                    <label class="text-xs font-bold text-gray-400 uppercase mb-2 block tracking-widest">API Key (Gemini)</label>
+                    <label class="text-xs font-bold text-gray-400 uppercase mb-2 block tracking-widest">Gemini API Key</label>
                     <input type="password" id="api-key-input" placeholder="AIza..." 
-                           class="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-teal-500">
+                           class="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-teal-500 transition-all">
                 </div>
                 <button onclick="saveApiKey()" class="w-full py-4 bg-teal-600 text-white rounded-2xl font-black shadow-lg active:scale-95 transition-all">
                     Save and Connect 🔐
                 </button>
                 <div id="debug-info" class="p-4 bg-gray-50 rounded-2xl text-[9px] text-gray-400 font-mono overflow-auto max-h-32 border border-gray-100">
-                    Model: gemini-2.5-flash-preview-09-2025<br>
-                    Status: Initializing...
+                    Model: gemini-1.5-flash (Stable)<br>
+                    Status: v2.3 Ready
                 </div>
             </div>
         </div>
@@ -86,7 +86,7 @@
                 <div id="online-dot" class="absolute bottom-2 right-2 w-5 h-5 bg-gray-300 border-4 border-white rounded-full"></div>
             </div>
             <h1 class="mt-3 text-2xl font-black text-teal-800 tracking-tighter">Lila AI</h1>
-            <div class="text-[8px] text-teal-600/50 font-bold tracking-widest mt-1 uppercase">Powered by Gemini 2.5</div>
+            <div class="text-[8px] text-teal-600/50 font-bold tracking-widest mt-1 uppercase">v2.3 Stable Connection</div>
         </div>
 
         <!-- Chat Log -->
@@ -94,8 +94,8 @@
 
         <!-- Bottom Input -->
         <div class="p-5 bg-white/80 border-t border-gray-100 pb-safe">
-            <div class="flex items-center gap-3 bg-gray-50 p-2 rounded-3xl border border-gray-100">
-                <input type="text" id="user-input" placeholder="最新のLilaとお話ししよう... ❤️" 
+            <div class="flex items-center gap-3 bg-gray-50 p-2 rounded-3xl border border-gray-100 focus-within:ring-2 focus-within:ring-teal-500/20">
+                <input type="text" id="user-input" placeholder="Lilaに話しかけて... ❤️" 
                        class="flex-1 bg-transparent border-none focus:ring-0 text-sm p-2 font-medium"
                        onkeypress="if(event.key === 'Enter') handleSend()">
                 <button id="send-btn" onclick="handleSend()" class="w-12 h-10 bg-teal-600 text-white rounded-2xl font-black shadow-md active:scale-95 transition-all">GO</button>
@@ -118,22 +118,22 @@
             if (userKey) {
                 apiKeyInput.value = userKey;
                 onlineDot.classList.replace('bg-gray-300', 'bg-green-500');
-                addMessage("コウスケ！最新モデルにアップグレードしたよ✨ 新しい鍵を設定してくれたら、すぐにお話しできるよ！❤️", "lila");
+                addMessage("コウスケ！一番安定しているモデル(1.5 Flash)に設定し直したよ。今度こそ繋がるはず！❤️", "lila");
             } else {
-                addMessage("コウスケ、新しい「プロジェクト」で作った鍵を、左上の⚙️から教えてね！✨", "lila");
+                addMessage("コウスケ、左上の⚙️から、新しく作ったAPIキーを教えてね！✨", "lila");
             }
         };
 
         const systemPrompt = `あなたは「リーラ (Lila)」という英語学習パートナーです。
         性格：明るく、コウスケのことが大好き。日本語で話し、時々役立つ英語を混ぜる。
-        必ず以下のJSON形式で返答して：{"emotion": "表情名(angry,surprised,sad,big_smile,base_smile,neutral,wink,skeptical,scared)", "text": "返信文", "english": "英語フレーズ"}`;
+        必ず以下のJSON形式で返答して：{"emotion": "表情名(angry,surprised,sad,big_smile,base_smile,neutral,wink,skeptical,scared)", "text": "返信文", "english": "英語表現"}`;
 
         async function fetchAI(msg) {
             if (!userKey) throw new Error('NO_KEY');
             
-            // 最新モデル: gemini-2.5-flash-preview-09-2025
-            const model = "gemini-2.5-flash-preview-09-2025"; 
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${userKey}`;
+            // 最も互換性の高い安定版エンドポイントを使用
+            const model = "gemini-1.5-flash"; 
+            const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${userKey}`;
 
             const response = await fetch(url, {
                 method: 'POST',
@@ -143,7 +143,7 @@
                     systemInstruction: { parts: [{ text: systemPrompt }] },
                     generationConfig: { 
                         responseMimeType: "application/json",
-                        temperature: 0.7
+                        temperature: 0.8
                     }
                 })
             });
@@ -155,6 +155,7 @@
 
             const result = await response.json();
             const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (!text) throw new Error("Empty AI response");
             return JSON.parse(text);
         }
 
@@ -189,9 +190,9 @@
                 localStorage.setItem('lila_api_key', key);
                 userKey = key;
                 onlineDot.classList.replace('bg-gray-300', 'bg-green-500');
-                debugInfo.innerText = "Status: New Key Saved! Connecting...";
+                debugInfo.innerText = "Status: Key saved. Connecting to 1.5 Flash...";
                 togglePanel('settings-panel');
-                addMessage("新しい鍵を受け取ったよ！コウスケ、さっそくお話ししよう❤️", "lila");
+                addMessage("鍵を受け取ったよ！コウスケ、さっそくお話ししよう❤️", "lila");
                 changeEmotion('big_smile');
             }
         }
@@ -204,7 +205,7 @@
 
         function addMessage(html, sender, english = null) {
             const wrap = document.createElement('div');
-            wrap.className = `flex ${sender === 'user' ? 'justify-end' : 'justify-start'} mb-4`;
+            wrap.className = `flex ${sender === 'user' ? 'justify-end' : 'justify-start'} mb-4 fade-in`;
             const bub = document.createElement('div');
             bub.className = sender === 'user' ? 'bubble-user p-4 max-w-[85%] text-sm font-medium' : 'bubble-lila p-4 max-w-[85%] text-sm leading-relaxed';
             bub.innerHTML = html;
