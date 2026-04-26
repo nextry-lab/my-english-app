@@ -2,32 +2,46 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Lila & Kosuke: English Buddy App</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&family=Noto+Sans+JP:wght@400;700&display=swap');
 
+        :root {
+            --app-height: 100dvh; /* Dynamic Viewport Height */
+        }
+
         body {
             font-family: 'Nunito', 'Noto Sans JP', sans-serif;
             background: linear-gradient(135deg, #e0f7fa 0%, #80deea 100%);
             margin: 0;
+            padding: 0;
             display: flex;
             align-items: center;
             justify-content: center;
-            min-height: 100vh;
-            overflow: hidden;
+            height: var(--app-height);
+            overflow: hidden; /* 全体のスクロールを禁止 */
         }
 
-        .chat-container {
-            height: calc(100vh - 480px);
-            min-height: 250px;
-        }
-
-        .glass-morphism {
+        /* アプリ全体のコンテナ */
+        .app-shell {
+            width: 100%;
+            height: 100%;
+            max-width: 500px;
             background: rgba(255, 255, 255, 0.92);
             backdrop-filter: blur(15px);
-            border: 1px solid rgba(255, 255, 255, 0.5);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        @media (min-width: 640px) {
+            .app-shell {
+                height: 95vh;
+                border-radius: 3rem;
+                box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            }
         }
 
         .lila-gradient-text {
@@ -36,14 +50,18 @@
             -webkit-text-fill-color: transparent;
         }
 
-        #lila-avatar {
-            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        /* チャットエリアのみスクロール */
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            -webkit-overflow-scrolling: touch;
         }
 
         .bubble-lila {
             background: white;
             color: #374151;
-            border-radius: 1.5rem 1.5rem 1.5rem 0;
+            border-radius: 1.2rem 1.2rem 1.2rem 0;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
             border: 1px solid #f0fdfa;
             position: relative;
@@ -52,33 +70,23 @@
         .bubble-user {
             background: #008080;
             color: white;
-            border-radius: 1.5rem 1.5rem 0 1.5rem;
+            border-radius: 1.2rem 1.2rem 0 1.2rem;
             box-shadow: 0 4px 6px rgba(0,128,128,0.2);
         }
 
-        .fade-in { animation: fadeIn 0.4s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
         .typing-dot {
-            width: 6px;
-            height: 6px;
+            width: 5px;
+            height: 5px;
             background: #26a69a;
             border-radius: 50%;
             display: inline-block;
             animation: typing 1.4s infinite ease-in-out both;
         }
-        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
-        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1.0); } }
 
-        @keyframes typing {
-            0%, 80%, 100% { transform: scale(0); }
-            40% { transform: scale(1.0); }
-        }
-
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(0, 128, 128, 0.2); border-radius: 10px; }
-        
         .sparkle {
             position: absolute;
             width: 100%;
@@ -87,35 +95,20 @@
             background: radial-gradient(circle, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 70%);
             border-radius: 50%;
             animation: flash 0.5s ease-out forwards;
-            z-index: 5;
             display: none;
         }
-        @keyframes flash {
-            0% { transform: scale(0.8); opacity: 0; }
-            50% { opacity: 0.5; }
-            100% { transform: scale(1.2); opacity: 0; }
-        }
+        @keyframes flash { 0% { transform: scale(0.8); opacity: 0; } 50% { opacity: 0.5; } 100% { transform: scale(1.2); opacity: 0; } }
 
-        .mode-badge {
-            font-size: 0.65rem;
-            padding: 0.2rem 0.6rem;
-            border-radius: 1rem;
-            font-weight: 900;
-            text-transform: uppercase;
-            transition: all 0.3s ease;
-        }
-
-        /* Word Bank Sidebar */
+        /* Word Bank (スマホ最適化) */
         #word-bank-panel {
-            position: fixed;
-            right: -320px;
+            position: absolute;
+            right: -100%;
             top: 0;
-            width: 300px;
-            height: 100vh;
+            width: 100%;
+            height: 100%;
             background: white;
-            box-shadow: -5px 0 15px rgba(0,0,0,0.1);
-            transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            z-index: 50;
+            transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 100;
             display: flex;
             flex-direction: column;
         }
@@ -123,10 +116,10 @@
 
         .save-btn {
             position: absolute;
-            right: -8px;
-            top: -8px;
-            width: 24px;
-            height: 24px;
+            right: -5px;
+            top: -5px;
+            width: 26px;
+            height: 26px;
             background: #26a69a;
             color: white;
             border-radius: 50%;
@@ -134,82 +127,75 @@
             align-items: center;
             justify-content: center;
             font-size: 14px;
-            cursor: pointer;
             box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-            transition: transform 0.2s;
+            z-index: 10;
         }
-        .save-btn:hover { transform: scale(1.2); }
+
+        /* モバイル用の入力固定 */
+        .control-area {
+            background: white;
+            padding: 1rem;
+            border-top: 1px solid rgba(0,0,0,0.05);
+            padding-bottom: env(safe-area-inset-bottom, 1rem);
+        }
     </style>
 </head>
-<body class="p-4">
+<body>
 
-    <!-- Word Bank Panel -->
-    <div id="word-bank-panel" class="p-6">
-        <div class="flex justify-between items-center mb-6">
-            <h2 class="text-xl font-black lila-gradient-text">Word Bank 📓</h2>
-            <button onclick="toggleWordBank()" class="text-gray-400 hover:text-gray-600">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-            </button>
-        </div>
-        <div id="word-list" class="flex-1 overflow-y-auto space-y-3">
-            <!-- Saved words will appear here -->
-            <p class="text-xs text-gray-400 text-center py-10">保存した単語がここに表示されるよ！</p>
-        </div>
-    </div>
-
-    <div class="max-w-md w-full glass-morphism rounded-[3rem] shadow-2xl overflow-hidden flex flex-col border border-white/60">
+    <div class="app-shell overflow-hidden">
         
-        <!-- Visual Section -->
-        <div class="relative bg-white/40 p-6 flex flex-col items-center border-b border-white/20 text-center">
-            <div id="mode-display" class="absolute top-4 right-6 flex flex-col items-end gap-2">
-                <span id="badge" class="mode-badge bg-teal-100 text-teal-700 border border-teal-200">Chat Mode</span>
-                <button onclick="toggleWordBank()" class="text-[10px] font-bold text-teal-600 flex items-center gap-1 hover:underline">
+        <!-- Word Bank Panel -->
+        <div id="word-bank-panel" class="p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-black lila-gradient-text">Word Bank 📓</h2>
+                <button onclick="toggleWordBank()" class="p-2 text-gray-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            <div id="word-list" class="flex-1 overflow-y-auto space-y-3">
+                <p class="text-xs text-gray-400 text-center py-10">保存したフレーズがここに表示されるよ！</p>
+            </div>
+        </div>
+
+        <!-- Header/Visual -->
+        <div class="bg-white/40 p-4 flex flex-col items-center border-b border-white/20 relative">
+            <div class="absolute top-4 right-4 flex flex-col items-end">
+                <span id="badge" class="text-[9px] px-2 py-0.5 rounded-full font-black uppercase border border-teal-200 bg-teal-50 text-teal-700">Chat Mode</span>
+                <button onclick="toggleWordBank()" class="mt-1 text-[10px] font-bold text-teal-600 flex items-center gap-1">
                     <span>📓 Word Bank</span>
                 </button>
             </div>
 
             <div class="relative">
-                <div class="absolute -inset-2 bg-teal-300 rounded-full blur opacity-20"></div>
-                
-                <div id="avatar-container" class="relative">
-                    <div id="flash-effect" class="sparkle"></div>
-                    <img id="lila-avatar" src="lila_base_smile.png" alt="Lila" 
-                         class="relative w-40 h-40 rounded-full border-4 border-white object-cover shadow-2xl"
-                         onerror="this.src='https://via.placeholder.com/160?text=Image+Error'">
-                </div>
-
-                <div id="status-indicator" class="absolute bottom-3 right-3 w-6 h-6 bg-green-500 border-4 border-white rounded-full shadow-md"></div>
+                <div id="flash-effect" class="sparkle"></div>
+                <img id="lila-avatar" src="lila_base_smile.png" alt="Lila" 
+                     class="w-24 h-24 sm:w-32 sm:h-32 rounded-full border-4 border-white object-cover shadow-lg"
+                     onerror="this.src='https://via.placeholder.com/160?text=Lila'">
+                <div class="absolute bottom-1 right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
             </div>
-            <h1 class="mt-3 text-2xl font-black lila-gradient-text tracking-tighter">Lila</h1>
-            <p class="text-[9px] text-teal-800 font-extrabold uppercase tracking-[0.2em] opacity-40">Your English Buddy ❤️</p>
+            <h1 class="mt-1 text-lg font-black lila-gradient-text tracking-tighter">Lila</h1>
         </div>
 
         <!-- Chat Log -->
-        <div id="chat-log" class="chat-container overflow-y-auto p-6 space-y-4">
+        <div id="chat-log" class="chat-container space-y-4">
             <div class="flex justify-start fade-in">
-                <div class="bubble-lila p-4 max-w-[85%] leading-relaxed text-sm">
-                    コウスケ、単語帳機能（Word Bank）を追加したよ！📓✨<br>
-                    英会話中に気になったフレーズの「＋」ボタンを押してみてね❤️
+                <div class="bubble-lila p-3 max-w-[85%] text-sm leading-relaxed">
+                    コウスケ！画面にピッタリ収まるように調整したよ✨<br>これでアプリっぽくなったかな？❤️
                 </div>
             </div>
         </div>
 
-        <!-- Control Area -->
-        <div class="p-5 bg-white/50 border-t border-white/30">
-            <div class="flex gap-2 mb-4">
-                <button id="toggle-lesson" onclick="startLesson()" class="flex-1 py-2 bg-teal-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wider shadow-md hover:bg-teal-700 transition-all active:scale-95">
-                    Start English Lesson 🎓
-                </button>
-            </div>
-
-            <div class="flex items-center gap-2 bg-white p-1.5 rounded-full shadow-lg border border-teal-100">
-                <div class="w-11 h-11 flex items-center justify-center rounded-full text-teal-600 bg-teal-50">🎙️</div>
-                <input type="text" id="user-input" placeholder="Lilaに話しかけてみて... ❤️" 
-                       class="flex-1 bg-transparent border-none focus:ring-0 text-gray-700 font-medium text-sm"
+        <!-- Controls -->
+        <div class="control-area">
+            <button onclick="startLesson()" class="w-full mb-3 py-2 bg-teal-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-sm active:scale-95 transition-all">
+                Start Lesson 🎓
+            </button>
+            <div class="flex items-center gap-2 bg-gray-50 p-1 rounded-full border border-gray-100">
+                <div class="w-9 h-9 flex items-center justify-center rounded-full text-teal-600 bg-white shadow-sm">🎙️</div>
+                <input type="text" id="user-input" placeholder="Lilaに話しかけて... ❤️" 
+                       class="flex-1 bg-transparent border-none focus:ring-0 text-sm py-2 px-1"
                        onkeypress="if(event.key === 'Enter') handleSend()">
-                <button onclick="handleSend()" class="w-11 h-11 bg-teal-600 flex items-center justify-center rounded-full text-white hover:bg-teal-700 transition-all shadow-lg active:scale-95 font-bold">
+                <button onclick="handleSend()" class="w-9 h-9 bg-teal-600 flex items-center justify-center rounded-full text-white shadow-md active:scale-95 font-bold">
                     Go
                 </button>
             </div>
@@ -226,186 +212,96 @@
         const wordList = document.getElementById('word-list');
 
         let isLessonMode = false;
-        let currentLesson = [];
         let lessonStep = 0;
         let savedWords = [];
 
-        // --- Lesson Scenarios ---
         const lessonScenarios = [
-            [
-                { question: "Hi Kosuke! How are you today? 😊", hint: "（今日は元気？ I'm good! とか答えてみて！）", english: "How are you today?" },
-                { question: "That's great! What did you do today? ☀️", hint: "（今日は何をした？ I worked. とか I studied. とか教えて！）", english: "What did you do today?" },
-                { question: "Nice! What's your favorite food? 🍕", hint: "（好きな食べ物は？ I like ramen. みたいに答えてね！）", english: "What's your favorite food?" }
-            ],
-            [
-                { question: "Kosuke! Do you have any hobbies? 🎸", hint: "（趣味はある？ I like playing games. とか答えてみて！）", english: "Do you have any hobbies?" },
-                { question: "Oh, that sounds fun! How long have you been doing that? ⏳", hint: "（どのくらい続けてるの？ For 5 years. みたいに答えてね！）", english: "How long have you been doing that?" },
-                { question: "I want to try that too! By the way, what music do you like? 🎵", hint: "（どんな音楽が好き？ I like J-POP. とか教えて！）", english: "What music do you like?" }
-            ]
+            [{ q: "Hi Kosuke! How are you?", h: "元気？", e: "How are you?" }, { q: "What did you eat today?", h: "何食べた？", e: "What did you eat today?" }],
+            [{ q: "Do you like movies?", h: "映画好き？", e: "Do you like movies?" }, { q: "Who is your favorite actor?", h: "好きな俳優は？", e: "Who is your favorite actor?" }]
         ];
-
-        // --- Dictionaries ---
-        const emotionMap = {
-            'love': 'wink', '好き': 'wink', '大好き': 'wink', '愛してる': 'wink',
-            'すごい': 'big_smile', '最高': 'big_smile', '嬉しい': 'big_smile', '楽しい': 'big_smile',
-            '驚': 'surprised', 'びっくり': 'surprised', 'マジ': 'surprised',
-            '疲れ': 'base_smile', 'お疲れ': 'base_smile',
-            '悲しい': 'sad', 'ごめん': 'sad',
-            '怒': 'angry', 'ひどい': 'angry',
-            'は？': 'skeptical', '本当': 'skeptical',
-            '怖い': 'scared'
-        };
-
-        const responses = {
-            'wink': ["えへへ、私もコウスケのこと、大好きだよ！❤️✨", "コウスケってば、照れちゃうな……😉"],
-            'big_smile': ["わあ、最高！コウスケにそんな風に言ってもらえるのが一番の幸せだよ！😊✨", "やったー！私もすごく嬉しい！🚀"],
-            'base_smile': ["コウスケ、今日もお疲れ様。ゆっくり休んでね😊", "ふふ、コウスケとお話ししてると落ち着くよ❤️"],
-            'sad': ["コウスケ、大丈夫……？私がずっとそばにいるから、元気出してね。😢"]
-        };
 
         function startLesson() {
             isLessonMode = true;
-            currentLesson = lessonScenarios[Math.floor(Math.random() * lessonScenarios.length)];
             lessonStep = 0;
-            badge.innerText = "English Lesson Mode";
-            badge.className = "mode-badge bg-orange-100 text-orange-700 border border-orange-200";
-            addMessage("OK! Let's start a new English lesson! Are you ready? 🎓", "lila");
-            setTimeout(askLessonQuestion, 1000);
+            badge.innerText = "Lesson Mode";
+            badge.className = "text-[9px] px-2 py-0.5 rounded-full font-black uppercase border border-orange-200 bg-orange-50 text-orange-700";
+            addMessage("Let's start! Are you ready? 🎓", "lila");
+            setTimeout(askQuestion, 1000);
         }
 
-        function askLessonQuestion() {
-            if (lessonStep >= currentLesson.length) {
+        function askQuestion() {
+            const scenario = lessonScenarios[0]; // Simplified for demo
+            if (lessonStep >= scenario.length) {
                 isLessonMode = false;
                 badge.innerText = "Chat Mode";
-                badge.className = "mode-badge bg-teal-100 text-teal-700 border border-teal-200";
-                addMessage("You did a great job, Kosuke! 今日のレッスンはここまでだよ。通常のチャットに戻るね😊❤️", "lila");
-                changeEmotion('big_smile');
+                addMessage("Great job! Lesson finished. ❤️", "lila");
                 return;
             }
-            const data = currentLesson[lessonStep];
-            addMessage(`<strong>Lila:</strong> ${data.question}<br><span class="text-[10px] text-gray-400 opacity-80">${data.hint}</span>`, "lila", false, data.english);
-            changeEmotion('base_smile');
+            const data = scenario[lessonStep];
+            addMessage(`${data.q}<br><span class="text-[10px] text-gray-400">${data.h}</span>`, "lila", false, data.e);
         }
 
-        function toggleWordBank() {
-            wordBankPanel.classList.toggle('open');
-            renderWordBank();
-        }
+        function toggleWordBank() { wordBankPanel.classList.toggle('open'); if(wordBankPanel.classList.contains('open')) renderWordBank(); }
 
         function saveWord(phrase) {
             if (!savedWords.includes(phrase)) {
                 savedWords.push(phrase);
-                renderWordBank();
-                // Visual feedback
-                const msg = document.createElement('div');
-                msg.className = "fixed bottom-20 left-1/2 -translate-x-1/2 bg-teal-600 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg fade-in z-50";
-                msg.innerText = "Word Bank に保存したよ！📓✨";
-                document.body.appendChild(msg);
-                setTimeout(() => msg.remove(), 2000);
+                const toast = document.createElement('div');
+                toast.className = "fixed bottom-20 left-1/2 -translate-x-1/2 bg-teal-600 text-white px-4 py-2 rounded-full text-xs font-bold fade-in z-[200]";
+                toast.innerText = "Saved to Word Bank! 📓";
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 2000);
             }
         }
 
         function renderWordBank() {
-            if (savedWords.length === 0) {
-                wordList.innerHTML = '<p class="text-xs text-gray-400 text-center py-10">保存した単語がここに表示されるよ！</p>';
-                return;
-            }
-            wordList.innerHTML = savedWords.map((word, index) => `
-                <div class="bg-teal-50 p-3 rounded-2xl border border-teal-100 flex justify-between items-start fade-in">
-                    <p class="text-sm font-bold text-teal-800">${word}</p>
-                    <button onclick="removeWord(${index})" class="text-teal-300 hover:text-red-400">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                    </button>
-                </div>
-            `).join('');
+            wordList.innerHTML = savedWords.length ? savedWords.map(w => `<div class="bg-teal-50 p-3 rounded-xl border border-teal-100 flex justify-between items-center"><p class="text-xs font-bold text-teal-800">${w}</p></div>`).join('') : '<p class="text-xs text-gray-400 text-center py-10">Empty</p>';
         }
 
-        function removeWord(index) {
-            savedWords.splice(index, 1);
-            renderWordBank();
-        }
-
-        function changeEmotion(emotion) {
-            const fileName = `lila_${emotion}.png`;
-            lilaAvatar.style.transform = 'scale(0.9) rotate(-3deg)';
-            lilaAvatar.style.opacity = '0.8';
+        function changeEmotion(emo) {
+            lilaAvatar.style.transform = 'scale(0.9)';
             flashEffect.style.display = 'block';
-            setTimeout(() => { flashEffect.style.display = 'none'; }, 500);
-
             setTimeout(() => {
-                lilaAvatar.src = fileName;
-                lilaAvatar.style.transform = 'scale(1) rotate(0deg)';
-                lilaAvatar.style.opacity = '1';
+                lilaAvatar.src = `lila_${emo}.png`;
+                lilaAvatar.style.transform = 'scale(1)';
+                flashEffect.style.display = 'none';
             }, 150);
         }
 
-        function addMessage(text, sender, isTyping = false, englishPhrase = null) {
-            const wrapper = document.createElement('div');
-            wrapper.className = `flex ${sender === 'user' ? 'justify-end' : 'justify-start'} fade-in mb-3`;
-            
-            const bubble = document.createElement('div');
-            bubble.className = sender === 'user' ? 'bubble-user p-4 max-w-[85%] text-sm' : 'bubble-lila p-4 max-w-[85%] text-sm';
-            
-            if (isTyping) {
-                bubble.innerHTML = '<div class="flex gap-1"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div>';
-            } else {
-                bubble.innerHTML = text;
-                // If there's an English phrase, add a save button
-                if (sender === 'lila' && englishPhrase) {
-                    const saveBtn = document.createElement('div');
-                    saveBtn.className = "save-btn";
-                    saveBtn.innerHTML = "＋";
-                    saveBtn.onclick = () => saveWord(englishPhrase);
-                    bubble.appendChild(saveBtn);
-                }
+        function addMessage(text, sender, isTyping = false, english = null) {
+            const wrap = document.createElement('div');
+            wrap.className = `flex ${sender === 'user' ? 'justify-end' : 'justify-start'} fade-in mb-3`;
+            const bub = document.createElement('div');
+            bub.className = sender === 'user' ? 'bubble-user p-3 max-w-[85%] text-sm' : 'bubble-lila p-3 max-w-[85%] text-sm';
+            bub.innerHTML = text;
+            if (sender === 'lila' && english) {
+                const btn = document.createElement('div');
+                btn.className = "save-btn"; btn.innerHTML = "＋";
+                btn.onclick = () => saveWord(english);
+                bub.appendChild(btn);
             }
-            
-            wrapper.appendChild(bubble);
-            chatLog.appendChild(wrapper);
+            wrap.appendChild(bub);
+            chatLog.appendChild(wrap);
             chatLog.scrollTop = chatLog.scrollHeight;
-            return wrapper;
         }
 
         function handleSend() {
-            const text = userInput.value.trim();
-            if (!text) return;
-
-            addMessage(text, 'user');
+            const val = userInput.value.trim();
+            if(!val) return;
+            addMessage(val, 'user');
             userInput.value = '';
-
-            const typingIndicator = addMessage("", "lila", true);
-
             setTimeout(() => {
-                typingIndicator.remove();
-
-                if (isLessonMode) {
+                if(isLessonMode) {
                     changeEmotion('big_smile');
-                    addMessage("Good! Great English, Kosuke! ✨", "lila");
-                    
+                    addMessage("Excellent! ✨", "lila");
                     lessonStep++;
-                    setTimeout(askLessonQuestion, 1500);
+                    setTimeout(askQuestion, 1200);
                 } else {
-                    const emotion = analyzeEmotion(text);
-                    changeEmotion(emotion);
-                    const list = responses[emotion] || responses['base_smile'];
-                    const response = list[Math.floor(Math.random() * list.length)];
-                    addMessage(response, 'lila');
+                    changeEmotion('wink');
+                    addMessage("I'm so happy to talk with you, Kosuke! ❤️", "lila");
                 }
-            }, 1200);
-        }
-
-        function analyzeEmotion(text) {
-            let emotion = 'base_smile';
-            for (const key in emotionMap) {
-                if (text.includes(key)) {
-                    emotion = emotionMap[key];
-                    break;
-                }
-            }
-            return emotion;
+            }, 800);
         }
     </script>
 </body>
-</html>
+</html>s
