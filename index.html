@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Lila AI Buddy</title>
+    <title>Lila AI Buddy v2.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&family=Noto+Sans+JP:wght@400;700&display=swap');
@@ -42,11 +42,17 @@
             display: inline-block; animation: typing 1.4s infinite ease-in-out both;
         }
         @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1.0); } }
+        .save-btn {
+            position: absolute; right: -6px; top: -6px; width: 26px; height: 26px;
+            background: #14b8a6; color: white; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; font-size: 14px;
+        }
     </style>
 </head>
 <body>
 
     <div class="app-shell overflow-hidden">
+        
         <!-- Settings Panel -->
         <div id="settings-panel" class="side-panel p-8">
             <div class="flex justify-between items-center mb-8">
@@ -55,15 +61,16 @@
             </div>
             <div class="space-y-6">
                 <div>
-                    <label class="text-xs font-bold text-gray-400 uppercase mb-2 block tracking-widest">API Key</label>
+                    <label class="text-xs font-bold text-gray-400 uppercase mb-2 block tracking-widest">API Key (Gemini)</label>
                     <input type="password" id="api-key-input" placeholder="AIza..." 
                            class="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-teal-500">
                 </div>
                 <button onclick="saveApiKey()" class="w-full py-4 bg-teal-600 text-white rounded-2xl font-black shadow-lg active:scale-95 transition-all">
                     Save and Connect 🔐
                 </button>
-                <div id="debug-info" class="p-4 bg-gray-50 rounded-2xl text-[10px] text-gray-400 font-mono overflow-auto max-h-32 border border-gray-100">
-                    Status: Waiting for connection.
+                <div id="debug-info" class="p-4 bg-gray-50 rounded-2xl text-[9px] text-gray-400 font-mono overflow-auto max-h-32 border border-gray-100">
+                    Model: gemini-2.5-flash-preview-09-2025<br>
+                    Status: Initializing...
                 </div>
             </div>
         </div>
@@ -71,14 +78,15 @@
         <!-- Top Header -->
         <div class="p-6 flex flex-col items-center relative">
             <button onclick="togglePanel('settings-panel')" class="absolute top-6 left-6 text-gray-300 hover:text-teal-500 transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37a1.724 1.724 0 002.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                ⚙️
             </button>
             <div class="relative">
                 <img id="lila-avatar" src="lila_base_smile.png" alt="Lila" 
                      class="w-28 h-28 sm:w-32 sm:h-32 rounded-full border-4 border-white shadow-xl object-cover transition-transform duration-300">
-                <div id="online-dot" class="absolute bottom-2 right-2 w-5 h-5 bg-gray-300 border-4 border-white rounded-full shadow-sm"></div>
+                <div id="online-dot" class="absolute bottom-2 right-2 w-5 h-5 bg-gray-300 border-4 border-white rounded-full"></div>
             </div>
             <h1 class="mt-3 text-2xl font-black text-teal-800 tracking-tighter">Lila AI</h1>
+            <div class="text-[8px] text-teal-600/50 font-bold tracking-widest mt-1 uppercase">Powered by Gemini 2.5</div>
         </div>
 
         <!-- Chat Log -->
@@ -87,11 +95,10 @@
         <!-- Bottom Input -->
         <div class="p-5 bg-white/80 border-t border-gray-100 pb-safe">
             <div class="flex items-center gap-3 bg-gray-50 p-2 rounded-3xl border border-gray-100">
-                <div class="w-10 h-10 flex items-center justify-center rounded-full bg-white text-teal-500 shadow-sm">🎙️</div>
-                <input type="text" id="user-input" placeholder="Lilaに話しかけて... ❤️" 
+                <input type="text" id="user-input" placeholder="最新のLilaとお話ししよう... ❤️" 
                        class="flex-1 bg-transparent border-none focus:ring-0 text-sm p-2 font-medium"
                        onkeypress="if(event.key === 'Enter') handleSend()">
-                <button id="send-btn" onclick="handleSend()" class="w-12 h-10 bg-teal-600 text-white rounded-2xl font-black shadow-md shadow-teal-600/20 active:scale-95 transition-all">GO</button>
+                <button id="send-btn" onclick="handleSend()" class="w-12 h-10 bg-teal-600 text-white rounded-2xl font-black shadow-md active:scale-95 transition-all">GO</button>
             </div>
         </div>
     </div>
@@ -111,40 +118,44 @@
             if (userKey) {
                 apiKeyInput.value = userKey;
                 onlineDot.classList.replace('bg-gray-300', 'bg-green-500');
-                addMessage("コウスケ！設定を安定版(v1)に直したよ。これでもう404エラーは出ないはず！❤️", "lila");
+                addMessage("コウスケ！最新モデルにアップグレードしたよ✨ 新しい鍵を設定してくれたら、すぐにお話しできるよ！❤️", "lila");
             } else {
-                addMessage("コウスケ、左上の⚙️マークから「APIキー」をもう一度設定してね！✨", "lila");
+                addMessage("コウスケ、新しい「プロジェクト」で作った鍵を、左上の⚙️から教えてね！✨", "lila");
             }
         };
 
         const systemPrompt = `あなたは「リーラ (Lila)」という英語学習パートナーです。
         性格：明るく、コウスケのことが大好き。日本語で話し、時々役立つ英語を混ぜる。
-        必ず以下のJSON形式で返答して：{"emotion": "表情名", "text": "返信文"}`;
+        必ず以下のJSON形式で返答して：{"emotion": "表情名(angry,surprised,sad,big_smile,base_smile,neutral,wink,skeptical,scared)", "text": "返信文", "english": "英語フレーズ"}`;
 
         async function fetchAI(msg) {
             if (!userKey) throw new Error('NO_KEY');
             
-            // 最も安定している「v1」エンドポイントを使用
-            const model = "gemini-1.5-flash"; 
-            const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${userKey}`;
+            // 最新モデル: gemini-2.5-flash-preview-09-2025
+            const model = "gemini-2.5-flash-preview-09-2025"; 
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${userKey}`;
 
-            const res = await fetch(url, {
+            const response = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     contents: [{ parts: [{ text: msg }] }],
                     systemInstruction: { parts: [{ text: systemPrompt }] },
-                    generationConfig: { responseMimeType: "application/json" }
+                    generationConfig: { 
+                        responseMimeType: "application/json",
+                        temperature: 0.7
+                    }
                 })
             });
 
-            if (!res.ok) {
-                const err = await res.json();
-                throw new Error(err.error?.message || `Status: ${res.status}`);
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error?.message || `API Status: ${response.status}`);
             }
 
-            const data = await res.json();
-            return JSON.parse(data.candidates[0].content.parts[0].text);
+            const result = await response.json();
+            const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+            return JSON.parse(text);
         }
 
         async function handleSend() {
@@ -161,10 +172,11 @@
                 const ai = await fetchAI(val);
                 typing.remove();
                 changeEmotion(ai.emotion);
-                addMessage(ai.text, 'lila');
+                addMessage(ai.text, 'lila', ai.english);
             } catch (e) {
                 typing.remove();
-                addMessage(`エラーが出ちゃった😢<br><span class="text-[10px] text-red-400">${e.message}</span>`, "lila");
+                debugInfo.innerText = `Error Log: ${e.message}`;
+                addMessage(`接続エラーかな？😢<br><span class="text-[10px] text-red-400">Error: ${e.message}</span>`, "lila");
                 changeEmotion('sad');
             } finally {
                 sendBtn.disabled = false;
@@ -177,9 +189,9 @@
                 localStorage.setItem('lila_api_key', key);
                 userKey = key;
                 onlineDot.classList.replace('bg-gray-300', 'bg-green-500');
-                debugInfo.innerText = "Status: Connected to v1 Stable.";
+                debugInfo.innerText = "Status: New Key Saved! Connecting...";
                 togglePanel('settings-panel');
-                addMessage("準備完了！コウスケ、さっそくお話ししよう❤️", "lila");
+                addMessage("新しい鍵を受け取ったよ！コウスケ、さっそくお話ししよう❤️", "lila");
                 changeEmotion('big_smile');
             }
         }
@@ -190,12 +202,26 @@
             lilaAvatar.src = `lila_${target}.png`;
         }
 
-        function addMessage(html, sender) {
+        function addMessage(html, sender, english = null) {
             const wrap = document.createElement('div');
             wrap.className = `flex ${sender === 'user' ? 'justify-end' : 'justify-start'} mb-4`;
             const bub = document.createElement('div');
             bub.className = sender === 'user' ? 'bubble-user p-4 max-w-[85%] text-sm font-medium' : 'bubble-lila p-4 max-w-[85%] text-sm leading-relaxed';
             bub.innerHTML = html;
+            
+            if (sender === 'lila' && english) {
+                const btn = document.createElement('div');
+                btn.className = "save-btn"; btn.innerHTML = "＋";
+                btn.onclick = () => {
+                    const toast = document.createElement('div');
+                    toast.className = "fixed bottom-24 left-1/2 -translate-x-1/2 bg-black/70 text-white px-6 py-3 rounded-full text-xs font-bold z-[200]";
+                    toast.innerText = `"${english}" saved!`;
+                    document.body.appendChild(toast);
+                    setTimeout(() => toast.remove(), 2000);
+                };
+                bub.appendChild(btn);
+            }
+            
             wrap.appendChild(bub);
             chatLog.appendChild(wrap);
             chatLog.scrollTop = chatLog.scrollHeight;
