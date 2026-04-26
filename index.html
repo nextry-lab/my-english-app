@@ -76,19 +76,22 @@
             <div class="relative">
                 <img id="lila-avatar" src="lila_base_smile.png" alt="Lila" 
                      class="w-28 h-28 sm:w-32 sm:h-32 rounded-full border-4 border-white shadow-xl object-cover transition-transform duration-300">
-                <div id="online-dot" class="absolute bottom-2 right-2 w-5 h-5 bg-gray-300 border-4 border-white rounded-full"></div>
+                <div id="online-dot" class="absolute bottom-2 right-2 w-5 h-5 bg-gray-300 border-4 border-white rounded-full shadow-sm"></div>
             </div>
             <h1 class="mt-3 text-2xl font-black text-teal-800 tracking-tighter">Lila AI</h1>
         </div>
 
+        <!-- Chat Log -->
         <div id="chat-log" class="chat-container space-y-5"></div>
 
+        <!-- Bottom Input -->
         <div class="p-5 bg-white/80 border-t border-gray-100 pb-safe">
             <div class="flex items-center gap-3 bg-gray-50 p-2 rounded-3xl border border-gray-100">
+                <div class="w-10 h-10 flex items-center justify-center rounded-full bg-white text-teal-500 shadow-sm">🎙️</div>
                 <input type="text" id="user-input" placeholder="Lilaに話しかけて... ❤️" 
-                       class="flex-1 bg-transparent border-none focus:ring-0 text-sm p-2"
+                       class="flex-1 bg-transparent border-none focus:ring-0 text-sm p-2 font-medium"
                        onkeypress="if(event.key === 'Enter') handleSend()">
-                <button id="send-btn" onclick="handleSend()" class="w-12 h-10 bg-teal-600 text-white rounded-2xl font-black">GO</button>
+                <button id="send-btn" onclick="handleSend()" class="w-12 h-10 bg-teal-600 text-white rounded-2xl font-black shadow-md shadow-teal-600/20 active:scale-95 transition-all">GO</button>
             </div>
         </div>
     </div>
@@ -108,20 +111,22 @@
             if (userKey) {
                 apiKeyInput.value = userKey;
                 onlineDot.classList.replace('bg-gray-300', 'bg-green-500');
-                addMessage("コウスケ！脳を安定版に切り替えたよ。これでもうエラーは出ないはず！❤️", "lila");
+                addMessage("コウスケ！設定を安定版(v1)に直したよ。これでもう404エラーは出ないはず！❤️", "lila");
             } else {
-                addMessage("左上の⚙️マークから「APIキー」を貼り付けて保存してね！✨", "lila");
+                addMessage("コウスケ、左上の⚙️マークから「APIキー」をもう一度設定してね！✨", "lila");
             }
         };
 
-        const systemPrompt = `あなたは「リーラ (Lila)」という英語学習パートナーです。明るく親しみやすく日本語で話し、時々役立つ英語を混ぜます。必ず次のJSON形式で返答して：{"emotion": "表情名", "text": "返信文"}`;
+        const systemPrompt = `あなたは「リーラ (Lila)」という英語学習パートナーです。
+        性格：明るく、コウスケのことが大好き。日本語で話し、時々役立つ英語を混ぜる。
+        必ず以下のJSON形式で返答して：{"emotion": "表情名", "text": "返信文"}`;
 
         async function fetchAI(msg) {
             if (!userKey) throw new Error('NO_KEY');
             
-            // 多くのユーザーが使える最も安定したモデル「gemini-1.5-flash」を使用
+            // 最も安定している「v1」エンドポイントを使用
             const model = "gemini-1.5-flash"; 
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${userKey}`;
+            const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${userKey}`;
 
             const res = await fetch(url, {
                 method: 'POST',
@@ -145,10 +150,13 @@
         async function handleSend() {
             const val = userInput.value.trim();
             if(!val || sendBtn.disabled) return;
+
             addMessage(val, 'user');
             userInput.value = '';
             sendBtn.disabled = true;
+
             const typing = addMessage('<div class="flex gap-1 py-1"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div>', 'lila');
+
             try {
                 const ai = await fetchAI(val);
                 typing.remove();
@@ -156,9 +164,11 @@
                 addMessage(ai.text, 'lila');
             } catch (e) {
                 typing.remove();
-                addMessage(`エラー：${e.message}`, "lila");
+                addMessage(`エラーが出ちゃった😢<br><span class="text-[10px] text-red-400">${e.message}</span>`, "lila");
                 changeEmotion('sad');
-            } finally { sendBtn.disabled = false; }
+            } finally {
+                sendBtn.disabled = false;
+            }
         }
 
         function saveApiKey() {
@@ -167,21 +177,24 @@
                 localStorage.setItem('lila_api_key', key);
                 userKey = key;
                 onlineDot.classList.replace('bg-gray-300', 'bg-green-500');
+                debugInfo.innerText = "Status: Connected to v1 Stable.";
                 togglePanel('settings-panel');
-                addMessage("鍵をセットしたよ！お話ししよう❤️", "lila");
+                addMessage("準備完了！コウスケ、さっそくお話ししよう❤️", "lila");
+                changeEmotion('big_smile');
             }
         }
 
         function changeEmotion(emo) {
             const valid = ["angry", "surprised", "sad", "big_smile", "base_smile", "neutral", "wink", "skeptical", "scared"];
-            lilaAvatar.src = `lila_${valid.includes(emo) ? emo : 'base_smile'}.png`;
+            const target = valid.includes(emo) ? emo : "base_smile";
+            lilaAvatar.src = `lila_${target}.png`;
         }
 
         function addMessage(html, sender) {
             const wrap = document.createElement('div');
             wrap.className = `flex ${sender === 'user' ? 'justify-end' : 'justify-start'} mb-4`;
             const bub = document.createElement('div');
-            bub.className = sender === 'user' ? 'bubble-user p-4 max-w-[85%] text-sm' : 'bubble-lila p-4 max-w-[85%] text-sm';
+            bub.className = sender === 'user' ? 'bubble-user p-4 max-w-[85%] text-sm font-medium' : 'bubble-lila p-4 max-w-[85%] text-sm leading-relaxed';
             bub.innerHTML = html;
             wrap.appendChild(bub);
             chatLog.appendChild(wrap);
