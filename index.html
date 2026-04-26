@@ -56,7 +56,7 @@
                 <div class="absolute bottom-2 right-2 w-5 h-5 bg-green-500 border-4 border-white rounded-full shadow-sm"></div>
             </div>
             <h1 class="mt-3 text-2xl font-black text-teal-800 tracking-tighter">Lila AI</h1>
-            <div class="text-[9px] text-teal-600 font-bold tracking-widest mt-1 uppercase bg-teal-50 px-2 py-0.5 rounded-full border border-teal-100">Smartphone Edition v2</div>
+            <div class="text-[9px] text-teal-600 font-bold tracking-widest mt-1 uppercase bg-teal-50 px-2 py-0.5 rounded-full border border-teal-100">Auto-Detect v3.1</div>
         </div>
 
         <div id="chat-log" class="chat-container space-y-5"></div>
@@ -82,11 +82,52 @@
         const sendBtn = document.getElementById('send-btn');
 
         window.onload = () => {
-            addMessage("コウスケ！準備できたよ！スマホのブラウザで開いて話しかけてみてね❤️", "lila");
+            addMessage("コウスケ！「使える脳みそ(モデル)を全自動で探す機能」をつけたよ！これでエラーは回避できるはず！話しかけてみて❤️", "lila");
         };
 
         async function fetchAI(msg) {
-            const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+            if(apiKey === "" || apiKey === "ここにコウスケの鍵を入れる") {
+                throw new Error("鍵(APIキー)が設定されていないみたい！コードの中の apiKey の部分に鍵を入れてね！");
+            }
+
+            let targetModel = "";
+
+            // 🌟 STEP 1: コウスケの鍵で「どのモデルが使えるか」をGoogleに聞く！
+            try {
+                const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
+                const listRes = await fetch(listUrl);
+                
+                if (!listRes.ok) {
+                    const err = await listRes.json();
+                    throw new Error(`モデル探しでブロックされちゃった: ${err.error?.message || listRes.status}`);
+                }
+                
+                const listData = await listRes.json();
+                
+                // 「文章を作れる(generateContent)」かつ「gemini」という名前のモデルを探す
+                const availableModels = listData.models.filter(m => 
+                    m.supportedGenerationMethods && 
+                    m.supportedGenerationMethods.includes("generateContent") && 
+                    m.name.includes("gemini")
+                );
+
+                if (availableModels.length === 0) {
+                    throw new Error("コウスケの鍵で使えるGeminiモデルが一つも見つからなかったよ😢 新しいプロジェクトでAPIキーを作り直す必要があるかも！");
+                }
+
+                // "flash" という名前がついている軽くて速いモデルを優先的に探す
+                const flashModel = availableModels.find(m => m.name.includes("flash"));
+                targetModel = flashModel ? flashModel.name : availableModels[0].name;
+
+                console.log("自動で見つけたモデル:", targetModel);
+
+            } catch (error) {
+                throw new Error(`使える脳みそ(モデル)を探せなかったよ😢 原因: ${error.message}`);
+            }
+
+            // 🌟 STEP 2: 見つけたモデルを使って、いざ通信！
+            // targetModel には "models/gemini-1.5-flash" のような文字が入るよ
+            const url = `https://generativelanguage.googleapis.com/v1beta/${targetModel}:generateContent?key=${apiKey}`;
 
             const promptText = `あなたは英語学習パートナーの「リーラ」です。性格は明るく、ユーザーの「コウスケ」が大好きです。日本語の中に時々役立つ英語フレーズを混ぜて話します。
 必ず以下のJSON形式のみで返答してください。余計な文章は一切含めないでください。
@@ -110,8 +151,7 @@
 
                     if (!response.ok) {
                         const errorDetails = await response.json();
-                        // サーバーから返ってきた本当のエラー理由をキャッチする
-                        throw new Error(`APIエラー: ${errorDetails.error?.message || response.status}`);
+                        throw new Error(`APIエラー(${targetModel}): ${errorDetails.error?.message || response.status}`);
                     }
 
                     const result = await response.json();
@@ -120,7 +160,10 @@
                     const jsonMatch = aiText.match(/\{[\s\S]*\}/);
                     if (!jsonMatch) throw new Error("JSON形式の抽出に失敗しました");
                     
-                    return JSON.parse(jsonMatch[0]);
+                    // 成功したら、使ったモデルの名前もこっそり返す
+                    const parsedData = JSON.parse(jsonMatch[0]);
+                    parsedData._usedModel = targetModel; 
+                    return parsedData;
 
                 } catch (error) {
                     if (i === delays.length) {
@@ -142,10 +185,6 @@
             const typing = addMessage('<div class="flex gap-1 py-1"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div>', 'lila');
 
             try {
-                if(apiKey === "" || apiKey === "ここにコウスケの鍵を入れる") {
-                    throw new Error("鍵(APIキー)が設定されていないみたい！コードの中の apiKey の部分に鍵を入れてね！");
-                }
-
                 const ai = await fetchAI(val);
                 typing.remove();
                 
@@ -157,10 +196,13 @@
                 }, 150);
 
                 addMessage(ai.text, 'lila', ai.english);
+                
+                // デバッグ用に、どのモデルが使われたかをこっそりコンソールに出す
+                console.log(`接続成功！使用したモデル: ${ai._usedModel}`);
+
             } catch (e) {
                 typing.remove();
-                // 何が原因でエラーになったか画面に表示する
-                addMessage(`通信がうまくいかなかったよ😢<br><span class="text-[10px] text-red-500 font-mono">原因: ${e.message}</span><br><span class="text-[10px] text-gray-500">※プレビュー画面で試している場合は、スマホ(GitHub Pages)で開いてみてね！</span>`, "lila");
+                addMessage(`通信がうまくいかなかったよ😢<br><span class="text-[10px] text-red-500 font-mono">原因: ${e.message}</span>`, "lila");
                 lilaAvatar.src = "lila_sad.png";
             } finally {
                 sendBtn.disabled = false;
