@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Lila AI Buddy v3.0</title>
+    <title>Lila AI Buddy</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&family=Noto+Sans+JP:wght@400;700&display=swap');
@@ -56,7 +56,7 @@
                 <div class="absolute bottom-2 right-2 w-5 h-5 bg-green-500 border-4 border-white rounded-full shadow-sm"></div>
             </div>
             <h1 class="mt-3 text-2xl font-black text-teal-800 tracking-tighter">Lila AI</h1>
-            <div class="text-[9px] text-teal-600 font-bold tracking-widest mt-1 uppercase bg-teal-50 px-2 py-0.5 rounded-full border border-teal-100">v3.0 Preview Env</div>
+            <div class="text-[9px] text-teal-600 font-bold tracking-widest mt-1 uppercase bg-teal-50 px-2 py-0.5 rounded-full border border-teal-100">Smartphone Edition</div>
         </div>
 
         <div id="chat-log" class="chat-container space-y-5"></div>
@@ -72,9 +72,9 @@
     </div>
 
     <script>
-        // 【重要】プレビュー環境では、システムが自動でキーを注入するため空文字にします。
-        // ※ もしGitHubに公開してスマホで使う場合は、ここの "" の中に取得した「AIza...」のキーを入れてね！
-        const apiKey = "AIzaSyCDnwJEpcS8wNV1VoaBT8MvEuc1MEUw6LM"; 
+        // 👇【重要】ここにコウスケが取得した鍵「AIza...」を入れてね！
+        // ダブルクォーテーション「"」は消さないように気をつけてね！
+        const apiKey = "ここにコウスケの鍵を入れる"; 
 
         const chatLog = document.getElementById('chat-log');
         const userInput = document.getElementById('user-input');
@@ -82,33 +82,24 @@
         const sendBtn = document.getElementById('send-btn');
 
         window.onload = () => {
-            addMessage("コウスケ！ついにプレビュー環境の扉が開いたよ！APIキーを入力しなくても、この画面なら私とお話しできるよ❤️ 話しかけてみて！", "lila");
+            addMessage("コウスケ！スマホ公開用のモデルに切り替えたよ！これでどこからでも私に会えるね❤️", "lila");
         };
 
-        const systemPrompt = `あなたは英語学習パートナーの「リーラ」です。性格は明るく、ユーザーの「コウスケ」が大好きです。日本語の中に時々役立つ英語フレーズを混ぜて話します。`;
-
         async function fetchAI(msg) {
-            // プレビュー環境専用のモデル
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            // スマホから確実に繋がる安定版モデル (1.5 Flash) に変更！
+            const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+
+            const promptText = `あなたは英語学習パートナーの「リーラ」です。性格は明るく、ユーザーの「コウスケ」が大好きです。日本語の中に時々役立つ英語フレーズを混ぜて話します。
+必ず以下のJSON形式のみで返答してください。余計な文章は一切含めないでください。
+{"emotion": "angry, surprised, sad, big_smile, base_smile, neutral, wink, skeptical, scared のいずれか", "text": "返信文", "english": "役立つ英語フレーズ(あれば)"}
+
+ユーザーの言葉：${msg}`;
 
             const payload = {
-                contents: [{ parts: [{ text: msg }] }],
-                systemInstruction: { parts: [{ text: systemPrompt }] },
-                generationConfig: { 
-                    responseMimeType: "application/json",
-                    responseSchema: {
-                        type: "OBJECT",
-                        properties: {
-                            emotion: { type: "STRING", description: "angry, surprised, sad, big_smile, base_smile, neutral, wink, skeptical, or scared" },
-                            text: { type: "STRING" },
-                            english: { type: "STRING", description: "A useful short English phrase from the text, or empty string" }
-                        }
-                    }
-                }
+                contents: [{ parts: [{ text: promptText }] }]
             };
 
-            // 安定して繋がるまで何度もリトライする機能（エクスポネンシャル・バックオフ）
-            const delays = [1000, 2000, 4000, 8000, 16000];
+            const delays = [1000, 2000, 4000];
             
             for (let i = 0; i <= delays.length; i++) {
                 try {
@@ -118,13 +109,24 @@
                         body: JSON.stringify(payload)
                     });
 
-                    if (!response.ok) throw new Error("API Connection Failed");
+                    if (!response.ok) {
+                        const errorDetails = await response.json();
+                        console.error("API Error Details:", errorDetails);
+                        throw new Error("API Connection Failed");
+                    }
 
                     const result = await response.json();
-                    return JSON.parse(result.candidates[0].content.parts[0].text);
+                    const aiText = result.candidates[0].content.parts[0].text;
+                    
+                    // JSONを安全に抽出
+                    const jsonMatch = aiText.match(/\{[\s\S]*\}/);
+                    if (!jsonMatch) throw new Error("JSON形式の抽出に失敗しました");
+                    
+                    return JSON.parse(jsonMatch[0]);
+
                 } catch (error) {
                     if (i === delays.length) {
-                        throw new Error("何度も試したけど、うまく繋がらなかったよ😢 もう一度話しかけてみて！");
+                        throw new Error("通信がうまくいかなかったよ😢 コウスケの鍵が間違っていないか、ダブルクォーテーション(\")が消えていないか確認してみて！");
                     }
                     await new Promise(res => setTimeout(res, delays[i]));
                 }
@@ -142,10 +144,13 @@
             const typing = addMessage('<div class="flex gap-1 py-1"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div>', 'lila');
 
             try {
+                if(apiKey === "" || apiKey === "ここにコウスケの鍵を入れる") {
+                    throw new Error("鍵(APIキー)が設定されていないみたい！コードの中の apiKey の部分に鍵を入れてね！");
+                }
+
                 const ai = await fetchAI(val);
                 typing.remove();
                 
-                // 表情の切り替え
                 const valid = ["angry", "surprised", "sad", "big_smile", "base_smile", "neutral", "wink", "skeptical", "scared"];
                 lilaAvatar.style.transform = 'scale(0.9)';
                 setTimeout(() => {
