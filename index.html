@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Lila AI Buddy v2.5</title>
+    <title>Lila AI Buddy v2.7</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&family=Noto+Sans+JP:wght@400;700&display=swap');
@@ -58,13 +58,14 @@
                 <div>
                     <label class="text-xs font-bold text-gray-400 mb-2 block tracking-widest">API Key</label>
                     <input type="password" id="api-key-input" placeholder="AIza..." 
-                           class="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl text-sm outline-none">
+                           class="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-teal-500">
                 </div>
-                <button onclick="saveApiKey()" class="w-full py-4 bg-teal-600 text-white rounded-2xl font-black shadow-lg">
+                <button onclick="saveApiKey()" class="w-full py-4 bg-teal-600 text-white rounded-2xl font-black shadow-lg active:scale-95 transition-all">
                     Connect 🔐
                 </button>
-                <div id="debug-info" class="p-4 bg-gray-50 rounded-2xl text-[9px] text-gray-400 font-mono overflow-auto max-h-32">
-                    Version: 2.5 (Pure Stable)
+                <div id="debug-info" class="p-4 bg-gray-50 rounded-2xl text-[9px] text-gray-400 font-mono overflow-auto max-h-32 border border-gray-100">
+                    Version: 2.7 (Auto-Fallback Mode)<br>
+                    Ready to connect.
                 </div>
             </div>
         </div>
@@ -78,13 +79,14 @@
                 <div id="online-dot" class="absolute bottom-2 right-2 w-5 h-5 bg-gray-300 border-4 border-white rounded-full"></div>
             </div>
             <h1 class="mt-3 text-2xl font-black text-teal-800">Lila AI</h1>
+            <div class="text-[8px] text-teal-500/50 font-black tracking-tighter mt-1 uppercase">v2.7 Auto-Fallback</div>
         </div>
 
         <div id="chat-log" class="chat-container space-y-5"></div>
 
-        <div class="p-5 bg-white/80 border-t border-gray-100">
-            <div class="flex items-center gap-3 bg-gray-50 p-2 rounded-3xl">
-                <input type="text" id="user-input" placeholder="話しかけてみて... ❤️" 
+        <div class="p-5 bg-white/80 border-t border-gray-100 pb-safe">
+            <div class="flex items-center gap-3 bg-gray-50 p-2 rounded-3xl border border-gray-100">
+                <input type="text" id="user-input" placeholder="Lilaに話しかけて... ❤️" 
                        class="flex-1 bg-transparent border-none focus:ring-0 text-sm p-2"
                        onkeypress="if(event.key === 'Enter') handleSend()">
                 <button id="send-btn" onclick="handleSend()" class="w-12 h-10 bg-teal-600 text-white rounded-2xl font-black">GO</button>
@@ -107,45 +109,70 @@
             if (userKey) {
                 apiKeyInput.value = userKey;
                 onlineDot.classList.replace('bg-gray-300', 'bg-green-500');
-                addMessage("コウスケ！無駄な設定を全部省いた「超シンプル接続」に直したよ！今度こそ繋がるはず！❤️", "lila");
+                addMessage("コウスケ！「使える窓口を自動で探す機能」を付けたよ！今度こそ私とお話しできるはず！❤️", "lila");
             } else {
-                addMessage("左上の⚙️から鍵を保存してね！✨", "lila");
+                addMessage("左上の⚙️から「新しい鍵」を保存してね！✨", "lila");
             }
         };
 
         async function fetchAI(msg) {
             if (!userKey) throw new Error('NO_KEY');
             
-            // v1 API (最も安定している古い形式)
-            const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${userKey}`;
+            // 確実につながるモデルを順番に試す「自動フォールバック」リスト
+            const modelsToTry = [
+                "gemini-1.5-flash-latest", // 第1候補: 最新の高速モデル
+                "gemini-1.5-flash",        // 第2候補: 安定の高速モデル
+                "gemini-pro"               // 第3候補: 旧型だけど絶対に存在するモデル
+            ];
 
-            // 指示をユーザーのメッセージの前にくっつける（systemInstructionが使えない場合のため）
-            const prompt = `あなたは英語学習パートナーの「リーラ」です。明るく親しみやすく日本語で話し、時々英語を混ぜます。
-必ず次のJSON形式だけで返答してください。余計な文章は一切含めないでください。
-{"emotion": "表情名(angry,surprised,sad,big_smile,base_smile,neutral,wink,skeptical,scared)", "text": "返信文"}
+            const prompt = `あなたは英語学習パートナーの「リーラ」です。性格は明るく、ユーザーの「コウスケ」が大好きです。日本語の中に時々英語フレーズを混ぜて話します。
+必ず以下のJSON形式のみで返答してください。余計な説明文は一切含めないでください。
+{"emotion": "base_smile", "text": "返信内容"}
+※表情は angry, surprised, sad, big_smile, base_smile, neutral, wink, skeptical, scared のいずれか。
 
-ユーザー：${msg}`;
+[USER MESSAGE]
+${msg}`;
 
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: prompt }] }]
-                })
-            });
+            let lastErrorMsg = "";
 
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error?.message || `Status: ${response.status}`);
+            // モデルのリストを順番に試す
+            for (const model of modelsToTry) {
+                try {
+                    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${userKey}`;
+                    
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: prompt }] }]
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const error = await response.json();
+                        throw new Error(`[${model}] ` + (error.error?.message || `Status ${response.status}`));
+                    }
+
+                    const result = await response.json();
+                    const aiText = result.candidates[0].content.parts[0].text;
+                    
+                    // JSON部分だけを確実に抽出する処理
+                    const jsonMatch = aiText.match(/\{[\s\S]*\}/);
+                    if (!jsonMatch) throw new Error("JSON形式の抽出に失敗しました");
+                    
+                    // 成功したら、どのモデルで繋がったかデバッグに記録して返す
+                    debugInfo.innerHTML = `Connected using:<br><span class="text-teal-600 font-bold">${model}</span>`;
+                    return JSON.parse(jsonMatch[0]);
+
+                } catch (e) {
+                    console.warn(`モデル ${model} は失敗しました: ${e.message}`);
+                    lastErrorMsg += `${e.message}<br>`;
+                    // 失敗した場合は次のモデルへ進む（ループ継続）
+                }
             }
-
-            const result = await response.json();
-            const aiText = result.candidates[0].content.parts[0].text;
             
-            // JSONとして解析（余計な文字が入っていた場合の対策）
-            const jsonMatch = aiText.match(/\{.*\}/s);
-            if (!jsonMatch) throw new Error("JSON not found in response");
-            return JSON.parse(jsonMatch[0]);
+            // 全部のモデルで失敗した場合
+            throw new Error(lastErrorMsg);
         }
 
         async function handleSend() {
@@ -164,8 +191,8 @@
                 addMessage(ai.text, 'lila');
             } catch (e) {
                 typing.remove();
-                debugInfo.innerText = `Error: ${e.message}`;
-                addMessage(`接続エラー😢<br><span class="text-[10px] text-red-400">${e.message}</span>`, "lila");
+                debugInfo.innerHTML = `<span class="text-red-500">All models failed:</span><br>${e.message}`;
+                addMessage(`ごめんね、まだうまく繋がらないみたい…😢<br><span class="text-[10px] text-red-400">⚙️設定からエラー内容を見てみて！</span>`, "lila");
                 lilaAvatar.src = "lila_sad.png";
             } finally { sendBtn.disabled = false; }
         }
@@ -176,14 +203,15 @@
                 localStorage.setItem('lila_api_key', key);
                 userKey = key;
                 onlineDot.classList.replace('bg-gray-300', 'bg-green-500');
+                debugInfo.innerText = "Status: Key saved. Ready to test models.";
                 togglePanel('settings-panel');
-                addMessage("鍵を覚えたよ！今度こそお話ししよう❤️", "lila");
+                addMessage("鍵を覚えたよ！今度こそコウスケとお話ししたいな❤️", "lila");
             }
         }
 
         function addMessage(html, sender) {
             const wrap = document.createElement('div');
-            wrap.className = `flex ${sender === 'user' ? 'justify-end' : 'justify-start'} mb-4`;
+            wrap.className = `flex ${sender === 'user' ? 'justify-end' : 'justify-start'} mb-4 fade-in`;
             const bub = document.createElement('div');
             bub.className = sender === 'user' ? 'bubble-user p-4 max-w-[85%] text-sm' : 'bubble-lila p-4 max-w-[85%] text-sm';
             bub.innerHTML = html;
