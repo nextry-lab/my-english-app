@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Lila AI Buddy v3.4</title>
+    <title>Lila AI Buddy v3.5</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&family=Noto+Sans+JP:wght@400;700&display=swap');
@@ -60,30 +60,16 @@
                 <button onclick="togglePanel('settings-panel')" class="text-gray-400 p-2">✕</button>
             </div>
             <div class="space-y-6">
-                <!-- API Key -->
                 <div>
                     <label class="text-xs font-bold text-gray-400 mb-2 block tracking-widest">API Key</label>
                     <input type="password" id="api-key-input" placeholder="AIza..." 
                            class="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-teal-500">
                 </div>
-                
-                <!-- English Mode Toggle -->
-                <div class="flex items-center justify-between bg-gray-50 p-4 rounded-2xl border border-gray-200">
-                    <div class="flex flex-col">
-                        <span class="text-sm font-bold text-gray-700">English Mode 🇺🇸</span>
-                        <span class="text-[10px] text-gray-500">リーラが英語だけで話すよ！</span>
-                    </div>
-                    <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" id="english-mode-toggle" class="sr-only peer" onchange="toggleEnglishMode()">
-                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-500"></div>
-                    </label>
-                </div>
-
                 <button onclick="saveApiKey()" class="w-full py-4 bg-teal-600 text-white rounded-2xl font-black shadow-lg">
                     Connect 🔐
                 </button>
                 <div id="debug-info" class="p-4 bg-gray-50 rounded-2xl text-[9px] text-gray-400 font-mono overflow-auto max-h-32">
-                    Version: 3.4 (English Mode added)<br>
+                    Version: 3.5 (Mini Lesson)<br>
                     Ready.
                 </div>
             </div>
@@ -101,7 +87,7 @@
         </div>
 
         <!-- Top Header -->
-        <div class="p-6 flex flex-col items-center relative border-b border-teal-100/50">
+        <div class="p-6 flex flex-col items-center relative">
             <button onclick="togglePanel('settings-panel')" class="absolute top-6 left-6 text-gray-300">⚙️</button>
             <div class="absolute top-6 right-6">
                 <button onclick="togglePanel('word-bank-panel')" class="flex items-center gap-1 text-[11px] font-black text-teal-600 bg-teal-50 px-3 py-1.5 rounded-full border border-teal-100">
@@ -114,11 +100,21 @@
                 <div id="online-dot" class="absolute bottom-2 right-2 w-5 h-5 bg-gray-300 border-4 border-white rounded-full shadow-sm"></div>
             </div>
             <h1 class="mt-3 text-2xl font-black text-teal-800 tracking-tighter">Lila AI</h1>
-            <div class="text-[9px] text-teal-600 font-bold tracking-widest mt-1 uppercase bg-teal-50 px-2 py-0.5 rounded-full border border-teal-100" id="mode-badge">Standard Mode v3.4</div>
+            <div class="text-[9px] text-teal-600 font-bold tracking-widest mt-1 uppercase bg-teal-50 px-2 py-0.5 rounded-full border border-teal-100" id="mode-badge">Standard Mode v3.5</div>
         </div>
 
+        <!-- Mode Switcher (Mini Lesson Button) -->
+        <div class="px-6 py-2 bg-white/80 backdrop-blur-md border-y border-gray-100 flex justify-center relative z-10 shadow-sm">
+            <button id="learning-btn" onclick="toggleLearningMode()" class="px-5 py-2 bg-blue-50 text-blue-600 font-bold text-xs rounded-full border border-blue-200 shadow-sm flex items-center gap-2 transition-all active:scale-95">
+                <span id="learning-btn-icon">✏️</span> 
+                <span id="learning-btn-text">ミニレッスンを始める</span>
+            </button>
+        </div>
+
+        <!-- Chat Log -->
         <div id="chat-log" class="chat-container space-y-5"></div>
 
+        <!-- Bottom Input -->
         <div class="p-5 bg-white/80 border-t border-gray-100 pb-safe">
             <div class="flex items-center gap-3 bg-gray-50 p-2 rounded-3xl border border-gray-100 focus-within:ring-2 focus-within:ring-teal-500/20">
                 <input type="text" id="user-input" placeholder="Lilaに話しかけてみて... ❤️" 
@@ -130,6 +126,9 @@
     </div>
 
     <script>
+        // 👇【重要】ここにコウスケの鍵（AIza...）を半角の " " の中に入れてね！
+        const apiKey = "ここにコウスケの鍵を入れる"; 
+
         const chatLog = document.getElementById('chat-log');
         const userInput = document.getElementById('user-input');
         const lilaAvatar = document.getElementById('lila-avatar');
@@ -139,54 +138,87 @@
         const debugInfo = document.getElementById('debug-info');
         const modeBadge = document.getElementById('mode-badge');
 
-        // 設定の読み込み
-        let userKey = localStorage.getItem('lila_api_key') || "";
+        let userKey = localStorage.getItem('lila_api_key') || apiKey;
         let savedWords = JSON.parse(localStorage.getItem('lila_words') || "[]");
-        let isEnglishMode = localStorage.getItem('lila_english_mode') === 'true';
+        
+        // 学習モードのステータス管理
+        let isLearningMode = false;
+        let learningTurnCount = 0;
+        const MAX_TURNS = 3; // 3問やったら終了！
 
         window.onload = () => {
             renderWordBank();
-            document.getElementById('english-mode-toggle').checked = isEnglishMode;
-            updateBadge();
+            updateModeUI();
             
-            if (userKey) {
+            if (userKey && userKey !== "ここにコウスケの鍵を入れる") {
                 apiKeyInput.value = userKey;
                 onlineDot.classList.replace('bg-gray-300', 'bg-green-500');
-                if (isEnglishMode) {
-                    addMessage("Okay Kosuke! Let's study English together! 🇺🇸❤️", "lila");
-                } else {
-                    addMessage("コウスケ！設定(⚙️)に「English Mode」のスイッチを追加したよ！英語ガッツリ勉強したい時はONにしてね❤️", "lila");
-                }
+                addMessage("コウスケ！初心者向けの「ミニレッスン機能」を追加したよ！チャット欄の上の ✏️ ボタンを押してみてね❤️", "lila");
             } else {
-                addMessage("コウスケ、左上の⚙️マークから鍵を入れてみてね！", "lila");
+                addMessage("コウスケ、コードの中か左上の⚙️マークから鍵を入れてね！", "lila");
             }
         };
 
-        function toggleEnglishMode() {
-            isEnglishMode = document.getElementById('english-mode-toggle').checked;
-            localStorage.setItem('lila_english_mode', isEnglishMode);
-            updateBadge();
-            
-            if (isEnglishMode) {
-                addMessage("Okay Kosuke! Let's talk in English from now on! I'll help you improve your English. ❤️", "lila");
-            } else {
-                addMessage("日本語モードに戻したよ！また時々ワンポイントで英語のフレーズ教えるね❤️", "lila");
-            }
-        }
+        // UI（ボタンとバッジ）の切り替え
+        function updateModeUI() {
+            const btnText = document.getElementById('learning-btn-text');
+            const btnIcon = document.getElementById('learning-btn-icon');
+            const btn = document.getElementById('learning-btn');
 
-        function updateBadge() {
-            if (isEnglishMode) {
-                modeBadge.innerText = "English Mode 🇺🇸";
-                modeBadge.className = "text-[9px] text-blue-600 font-bold tracking-widest mt-1 uppercase bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100";
+            if (isLearningMode) {
+                btnText.innerText = `レッスンをやめる (${learningTurnCount}/${MAX_TURNS})`;
+                btnIcon.innerText = "🛑";
+                btn.className = "px-5 py-2 bg-orange-50 text-orange-600 font-bold text-xs rounded-full border border-orange-200 shadow-sm flex items-center gap-2 transition-all active:scale-95";
+                modeBadge.innerText = "Study Mode ✏️";
+                modeBadge.className = "text-[9px] text-orange-600 font-bold tracking-widest mt-1 uppercase bg-orange-50 px-2 py-0.5 rounded-full border border-orange-100";
             } else {
-                modeBadge.innerText = "Standard Mode v3.4";
+                btnText.innerText = `ミニレッスンを始める`;
+                btnIcon.innerText = "✏️";
+                btn.className = "px-5 py-2 bg-blue-50 text-blue-600 font-bold text-xs rounded-full border border-blue-200 shadow-sm flex items-center gap-2 transition-all active:scale-95";
+                modeBadge.innerText = "Standard Mode v3.5";
                 modeBadge.className = "text-[9px] text-teal-600 font-bold tracking-widest mt-1 uppercase bg-teal-50 px-2 py-0.5 rounded-full border border-teal-100";
             }
         }
 
+        // レッスンの開始・終了ボタンが押された時
+        async function toggleLearningMode() {
+            if (isLearningMode) {
+                // 途中でやめる場合
+                isLearningMode = false;
+                learningTurnCount = 0;
+                updateModeUI();
+                addMessage("レッスンを中断したよ！またいつでも声かけてね❤️", "lila");
+                changeEmotion('base_smile');
+            } else {
+                // レッスンを開始する場合
+                isLearningMode = true;
+                learningTurnCount = 1;
+                updateModeUI();
+                
+                sendBtn.disabled = true;
+                const typing = addMessage('<div class="flex gap-1 py-1"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div>', 'lila');
+
+                try {
+                    const ai = await fetchAI("[START_LESSON]"); // AIに開始の合図を送る
+                    typing.remove();
+                    changeEmotion(ai.emotion);
+                    addMessage(ai.text, 'lila', ai.english);
+                } catch (e) {
+                    typing.remove();
+                    isLearningMode = false;
+                    learningTurnCount = 0;
+                    updateModeUI();
+                    addMessage(`エラーが起きちゃった😢<br><span class="text-[10px] text-red-500 font-mono">${e.message}</span>`, "lila");
+                    changeEmotion('sad');
+                } finally {
+                    sendBtn.disabled = false;
+                }
+            }
+        }
+
         async function fetchAI(msg) {
-            if (!userKey || userKey === "") {
-                throw new Error("鍵(APIキー)が設定されていないみたい！左上の⚙️マークから入力してね！");
+            if (!userKey || userKey === "" || userKey === "ここにコウスケの鍵を入れる") {
+                throw new Error("鍵(APIキー)が設定されていないみたい！");
             }
 
             let targetModel = "";
@@ -194,65 +226,54 @@
             try {
                 const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${userKey}`;
                 const listRes = await fetch(listUrl);
-                
-                if (!listRes.ok) {
-                    const err = await listRes.json();
-                    throw new Error(`モデル探しでブロック: ${err.error?.message || listRes.status}`);
-                }
-                
+                if (!listRes.ok) throw new Error("モデル探しでブロック");
                 const listData = await listRes.json();
-                const availableModels = listData.models.filter(m => 
-                    m.supportedGenerationMethods && 
-                    m.supportedGenerationMethods.includes("generateContent") && 
-                    m.name.includes("gemini")
-                );
-
+                const availableModels = listData.models.filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes("generateContent") && m.name.includes("gemini"));
                 if (availableModels.length === 0) throw new Error("使えるモデルが見つからなかったよ😢");
-
                 const flashModel = availableModels.find(m => m.name.includes("flash"));
                 targetModel = flashModel ? flashModel.name : availableModels[0].name;
-
             } catch (error) {
                 throw new Error(`エラー: ${error.message}`);
             }
 
             const url = `https://generativelanguage.googleapis.com/v1beta/${targetModel}:generateContent?key=${userKey}`;
 
-            // 🌟 モードによってAIの「脳内設定」を切り替える！
-            const systemPrompt = isEnglishMode
-                ? `あなたは英語学習パートナーの「リーラ」です。ユーザーの「コウスケ」が大好きです。
-現在は「本格英語学習モード」です。必ず【すべて自然で簡単な英語で】返答してください。日本語は使わないでください。
-もしコウスケが英語で話しかけて、不自然だったり文法が間違っていたら、「こう言うともっと自然だよ！」と英語で優しく教えてあげてください。
-コウスケが日本語で話しかけてきた場合は、その言葉の自然な英訳を教えてから、英語で会話を続けてください。
-必ず以下のJSON形式のみで返答してください。余計な文章は一切含めないでください。
-{"emotion": "angry, surprised, sad, big_smile, base_smile, neutral, wink, skeptical, scared のいずれか", "text": "英語の返信文", "english": "コウスケに覚えてほしい英単語や短いフレーズ(必須)"}`
-                
-                : `あなたは英語学習パートナーの「リーラ」です。性格は明るく、ユーザーの「コウスケ」が大好きです。日本語の中に時々役立つ英語フレーズを混ぜて話します。
-必ず1つ、会話に関連する自然で役立つ短い英語フレーズを提案してください。
-必ず以下のJSON形式のみで返答してください。余計な文章は一切含めないでください。
-{"emotion": "angry, surprised, sad, big_smile, base_smile, neutral, wink, skeptical, scared のいずれか", "text": "返信文", "english": "役立つ英語フレーズ(必須)"}`;
+            // 🌟 モードとターン数に合わせてAIへの指示を細かく変える！
+            let currentContext = "";
+            let userMessage = msg;
 
-            const payload = {
-                contents: [{ parts: [{ text: `${systemPrompt}\n\nユーザーの言葉：${msg}` }] }]
-            };
+            if (isLearningMode) {
+                if (msg === "[START_LESSON]") {
+                    currentContext = `【システム指示】今から英語初心者向けのミニレッスン（全${MAX_TURNS}問）を開始します。「英語のレッスンを始めよう！」と明るく誘い、コウスケに「とても簡単な英語の質問」を1つだけ出してください。日本語で意味やヒントも優しく添えてあげてください。`;
+                    userMessage = "レッスンを始めて！";
+                } else if (learningTurnCount < MAX_TURNS) {
+                    currentContext = `【システム指示】英語のミニレッスン中です（現在${learningTurnCount}問目）。コウスケの返答を受け止め、優しく褒めたり簡単な添削をしてから、「次の簡単な英語の質問」を1つだけ出してください。日本語のサポートも添えてください。`;
+                } else if (learningTurnCount === MAX_TURNS) {
+                    currentContext = `【システム指示】英語のミニレッスンの最終回（${MAX_TURNS}問目）の回答が来ました。コウスケの返答を褒めて添削した後、「今日のレッスンはお疲れ様！また通常モードでお話ししようね」と日本語で伝えてレッスンを締めくくってください。新たな質問は絶対に出さないでください。`;
+                }
+            } else {
+                currentContext = "【システム指示】現在は「通常モード」です。日本語で親しみやすく会話しながら、会話の文脈に関連する役立つ短い英語フレーズを1つだけ提案してください。コウスケに質問攻めにはしないでください。";
+            }
 
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
+            const promptText = `あなたは英語学習パートナーの「リーラ」です。性格は明るく、ユーザーの「コウスケ」が大好きです。
+必ず以下のJSON形式のみで返答してください。余計な文章は一切含めないでください。
+{"emotion": "angry, surprised, sad, big_smile, base_smile, neutral, wink, skeptical, scared のいずれか", "text": "返信文", "english": "役立つ英語フレーズ(必須)"}
+
+${currentContext}
+
+ユーザーの言葉：${userMessage}`;
+
+            const payload = { contents: [{ parts: [{ text: promptText }] }] };
+            const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
 
             if (!response.ok) {
                 const errorDetails = await response.json();
-                throw new Error(`APIエラー(${targetModel}): ${errorDetails.error?.message || response.status}`);
+                throw new Error(`APIエラー: ${errorDetails.error?.message || response.status}`);
             }
 
             const result = await response.json();
-            const aiText = result.candidates[0].content.parts[0].text;
-            
-            const jsonMatch = aiText.match(/\{[\s\S]*\}/);
+            const jsonMatch = result.candidates[0].content.parts[0].text.match(/\{[\s\S]*\}/);
             if (!jsonMatch) throw new Error("JSON形式の抽出に失敗しました");
-            
             return JSON.parse(jsonMatch[0]);
         }
 
@@ -271,22 +292,36 @@
                 typing.remove();
                 
                 const valid = ["angry", "surprised", "sad", "big_smile", "base_smile", "neutral", "wink", "skeptical", "scared"];
-                lilaAvatar.style.transform = 'scale(0.9)';
-                setTimeout(() => {
-                    lilaAvatar.src = `lila_${valid.includes(ai.emotion) ? ai.emotion : 'base_smile'}.png`;
-                    lilaAvatar.style.transform = 'scale(1)';
-                }, 150);
+                changeEmotion(valid.includes(ai.emotion) ? ai.emotion : 'base_smile');
 
                 addMessage(ai.text, 'lila', ai.english);
                 
+                // 🌟 レッスン中なら問題数をカウントアップして、終わったら自動で戻す！
+                if (isLearningMode) {
+                    learningTurnCount++;
+                    if (learningTurnCount > MAX_TURNS) {
+                        isLearningMode = false;
+                        learningTurnCount = 0;
+                    }
+                    updateModeUI();
+                }
+
             } catch (e) {
                 typing.remove();
                 debugInfo.innerText = `Error: ${e.message}`;
                 addMessage(`通信エラー😢<br><span class="text-[10px] text-red-500 font-mono">原因: ${e.message}</span>`, "lila");
-                lilaAvatar.src = "lila_sad.png";
+                changeEmotion('sad');
             } finally {
                 sendBtn.disabled = false;
             }
+        }
+
+        function changeEmotion(emo) {
+            lilaAvatar.style.transform = 'scale(0.9)';
+            setTimeout(() => {
+                lilaAvatar.src = `lila_${emo}.png`;
+                lilaAvatar.style.transform = 'scale(1)';
+            }, 150);
         }
 
         function saveApiKey() {
