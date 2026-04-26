@@ -7,9 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&family=Noto+Sans+JP:wght@400;700&display=swap');
-
         :root { --app-height: 100dvh; }
-
         body {
             font-family: 'Nunito', 'Noto Sans JP', sans-serif;
             background: linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%);
@@ -17,64 +15,38 @@
             display: flex; align-items: center; justify-content: center;
             height: var(--app-height); overflow: hidden;
         }
-
         .app-shell {
             width: 100%; height: 100%; max-width: 500px;
             background: rgba(255, 255, 255, 0.85);
             backdrop-filter: blur(20px);
             display: flex; flex-direction: column; position: relative;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
         }
-
-        @media (min-width: 640px) {
-            .app-shell { height: 92vh; border-radius: 3rem; border: 1px solid white; }
-        }
-
         .chat-container { flex: 1; overflow-y: auto; padding: 1.25rem; -webkit-overflow-scrolling: touch; }
-
         .bubble-lila {
             background: white; color: #334155;
             border-radius: 1.2rem 1.2rem 1.2rem 0;
             box-shadow: 0 4px 12px rgba(0,0,0,0.03);
             border: 1px solid #f0fdfa; position: relative;
         }
-
         .bubble-user {
             background: linear-gradient(135deg, #0d9488, #0f766e);
             color: white; border-radius: 1.2rem 1.2rem 0 1.2rem;
-            box-shadow: 0 4px 12px rgba(13, 148, 136, 0.2);
         }
-
-        .fade-in { animation: fadeIn 0.3s ease-out forwards; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* Panels */
         .side-panel {
             position: absolute; right: -100%; top: 0; width: 100%; height: 100%;
-            background: white; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            z-index: 100; display: flex; flex-direction: column;
+            background: white; transition: all 0.4s ease; z-index: 100;
         }
         .panel-open { right: 0 !important; }
-
         .typing-dot {
             width: 5px; height: 5px; background: #2dd4bf; border-radius: 50%;
             display: inline-block; animation: typing 1.4s infinite ease-in-out both;
         }
         @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1.0); } }
-
         .save-btn {
             position: absolute; right: -6px; top: -6px; width: 26px; height: 26px;
             background: #14b8a6; color: white; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 14px; box-shadow: 0 2px 6px rgba(0,0,0,0.15); cursor: pointer;
+            display: flex; align-items: center; justify-content: center; font-size: 14px;
         }
-
-        .sparkle-effect {
-            position: absolute; width: 100%; height: 100%; pointer-events: none;
-            background: radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 70%);
-            border-radius: 50%; animation: flash 0.6s ease-out forwards; display: none;
-        }
-        @keyframes flash { 0% { transform: scale(0.5); opacity: 1; } 100% { transform: scale(1.5); opacity: 0; } }
     </style>
 </head>
 <body>
@@ -89,70 +61,41 @@
             </div>
             <div class="space-y-6">
                 <div>
-                    <label class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 block">Gemini API Key</label>
+                    <label class="text-xs font-bold text-gray-400 uppercase mb-2 block">Gemini API Key</label>
                     <input type="password" id="api-key-input" placeholder="AIza..." 
-                           class="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:ring-2 focus:ring-teal-500 outline-none transition-all">
+                           class="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl text-sm outline-none">
                 </div>
-                <button onclick="saveApiKey()" class="w-full py-4 bg-teal-600 text-white rounded-2xl font-black shadow-lg shadow-teal-600/20 active:scale-95 transition-all">
+                <button onclick="saveApiKey()" class="w-full py-4 bg-teal-600 text-white rounded-2xl font-black shadow-lg">
                     Save and Connect 🔐
                 </button>
-                <div class="p-4 bg-teal-50 rounded-2xl border border-teal-100">
-                    <p class="text-[11px] text-teal-800 leading-relaxed font-medium">
-                        ※ コウスケ、Default Gemini Projectにあるキーをここに貼り付けてね。<br>
-                        ※ キーはスマホの中にだけ保存されるから安心して！
-                    </p>
+                <!-- Debug Info -->
+                <div id="debug-info" class="p-4 bg-gray-100 rounded-2xl text-[10px] text-gray-500 font-mono overflow-auto max-h-32">
+                    Debug Log: No errors yet.
                 </div>
-            </div>
-        </div>
-
-        <!-- Word Bank Panel -->
-        <div id="word-bank-panel" class="side-panel p-8">
-            <div class="flex justify-between items-center mb-8">
-                <h2 class="text-2xl font-black text-teal-800">Word Bank 📓</h2>
-                <button onclick="togglePanel('word-bank-panel')" class="text-gray-400 p-2">✕</button>
-            </div>
-            <div id="word-list" class="flex-1 overflow-y-auto space-y-4">
-                <p class="text-center text-gray-400 text-sm mt-20">まだ空っぽだよ。＋ボタンで保存してね！</p>
             </div>
         </div>
 
         <!-- Top Header -->
         <div class="p-6 flex flex-col items-center relative">
-            <div class="absolute top-6 left-6">
-                <button onclick="togglePanel('settings-panel')" class="text-gray-300 hover:text-teal-600 transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37a1.724 1.724 0 002.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                </button>
-            </div>
-            <div class="absolute top-6 right-6">
-                <button onclick="togglePanel('word-bank-panel')" class="flex items-center gap-1 text-[11px] font-black text-teal-600 bg-teal-50 px-3 py-1.5 rounded-full border border-teal-100">
-                    📓 <span class="tracking-tighter">BANK</span>
-                </button>
-            </div>
-
-            <div class="relative group">
-                <div id="flash-effect" class="sparkle-effect"></div>
+            <button onclick="togglePanel('settings-panel')" class="absolute top-6 left-6 text-gray-300">⚙️</button>
+            <div class="relative">
                 <img id="lila-avatar" src="lila_base_smile.png" alt="Lila" 
-                     class="w-28 h-28 sm:w-36 sm:h-36 rounded-full border-4 border-white shadow-xl object-cover transition-transform duration-500">
-                <div id="online-dot" class="absolute bottom-2 right-2 w-5 h-5 bg-gray-300 border-4 border-white rounded-full shadow-sm"></div>
+                     class="w-28 h-28 rounded-full border-4 border-white shadow-xl">
+                <div id="online-dot" class="absolute bottom-2 right-2 w-5 h-5 bg-gray-300 border-4 border-white rounded-full"></div>
             </div>
             <h1 class="mt-4 text-2xl font-black text-teal-800 tracking-tighter">Lila AI</h1>
         </div>
 
         <!-- Chat Log -->
-        <div id="chat-log" class="chat-container space-y-5">
-            <!-- Initial Message via JS -->
-        </div>
+        <div id="chat-log" class="chat-container space-y-5"></div>
 
         <!-- Bottom Input -->
-        <div class="p-5 bg-white/80 border-t border-gray-100 pb-safe">
-            <div class="flex items-center gap-3 bg-gray-50 p-2 rounded-3xl border border-gray-100 focus-within:ring-2 focus-within:ring-teal-500/20 transition-all">
-                <div class="w-10 h-10 flex items-center justify-center rounded-full bg-white text-teal-500 shadow-sm">🎙️</div>
-                <input type="text" id="user-input" placeholder="Lilaとお話ししよう... ❤️" 
-                       class="flex-1 bg-transparent border-none focus:ring-0 text-sm font-medium text-gray-700 placeholder-gray-400"
+        <div class="p-5 bg-white/80 border-t border-gray-100">
+            <div class="flex items-center gap-3 bg-gray-50 p-2 rounded-3xl border border-gray-100">
+                <input type="text" id="user-input" placeholder="話しかけてみて... ❤️" 
+                       class="flex-1 bg-transparent border-none focus:ring-0 text-sm p-2"
                        onkeypress="if(event.key === 'Enter') handleSend()">
-                <button id="send-btn" onclick="handleSend()" class="w-12 h-10 bg-teal-600 text-white rounded-2xl font-black active:scale-95 transition-all shadow-md shadow-teal-600/20">
-                    GO
-                </button>
+                <button id="send-btn" onclick="handleSend()" class="w-12 h-10 bg-teal-600 text-white rounded-2xl font-black">GO</button>
             </div>
         </div>
     </div>
@@ -161,44 +104,57 @@
         const chatLog = document.getElementById('chat-log');
         const userInput = document.getElementById('user-input');
         const lilaAvatar = document.getElementById('lila-avatar');
-        const flashEffect = document.getElementById('flash-effect');
         const onlineDot = document.getElementById('online-dot');
         const apiKeyInput = document.getElementById('api-key-input');
         const sendBtn = document.getElementById('send-btn');
+        const debugInfo = document.getElementById('debug-info');
 
-        let savedWords = JSON.parse(localStorage.getItem('lila_words') || "[]");
         let userKey = localStorage.getItem('lila_api_key') || "";
 
-        // 初期化
         window.onload = () => {
             if (userKey) {
                 apiKeyInput.value = userKey;
                 onlineDot.classList.replace('bg-gray-300', 'bg-green-500');
-                addMessage("コウスケ！戻ってきてくれて嬉しいな。また一緒にお話ししようね❤️", "lila");
+                addMessage("コウスケ！準備はできてるよ。お話ししよう！❤️", "lila");
             } else {
-                addMessage("コウスケ、左上の⚙️マークから「AIの鍵（APIキー）」を設定してね。それで私が目覚めるよ！✨", "lila");
+                addMessage("左上の⚙️マークから「APIキー」を設定してね！✨", "lila");
             }
         };
 
-        const systemPrompt = `あなたは「リーラ (Lila)」という、ユーザーである「コウスケ」の英語学習をサポートする親しみやすいパートナーです。
-        性格：明るく励まし上手、コウスケのことが大好き。日本語の中に時々英語フレーズを混ぜる。
-        応答形式：必ず以下のJSON形式で返してください。
-        {"emotion": "表情名(angry,surprised,sad,big_smile,base_smile,neutral,wink,skeptical,scaredのいずれか)", "text": "返信文", "english": "単語帳に保存させたい短い英語表現(あれば)"}`;
+        const systemPrompt = `あなたは「リーラ」というコウスケのパートナーです。明るく励まし、日本語と英語を混ぜて話します。
+        必ず以下の形式でJSON返信してください：
+        {"emotion": "表情名", "text": "返信", "english": "英語"}`;
 
         async function fetchAI(msg) {
             if (!userKey) throw new Error('NO_KEY');
-            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${userKey}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: msg }] }],
-                    systemInstruction: { parts: [{ text: systemPrompt }] },
-                    generationConfig: { responseMimeType: "application/json" }
-                })
-            });
-            if (!res.ok) throw new Error('FAIL');
-            const data = await res.json();
-            return JSON.parse(data.candidates[0].content.parts[0].text);
+            
+            // 安定版のモデル「gemini-1.5-flash」に変更
+            const model = "gemini-1.5-flash"; 
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${userKey}`;
+
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: msg }] }],
+                        systemInstruction: { parts: [{ text: systemPrompt }] },
+                        generationConfig: { responseMimeType: "application/json" }
+                    })
+                });
+
+                if (!res.ok) {
+                    const errorData = await res.json();
+                    console.error(errorData);
+                    throw new Error(`API_ERROR: ${res.status} - ${errorData.error?.message || 'Unknown'}`);
+                }
+
+                const data = await res.json();
+                return JSON.parse(data.candidates[0].content.parts[0].text);
+            } catch (e) {
+                debugInfo.innerText = `Last Error: ${e.message}`;
+                throw e;
+            }
         }
 
         async function handleSend() {
@@ -214,51 +170,15 @@
             try {
                 const ai = await fetchAI(val);
                 typing.remove();
-                changeEmotion(ai.emotion);
+                lilaAvatar.src = `lila_${ai.emotion || 'base_smile'}.png`;
                 addMessage(ai.text, 'lila', ai.english);
             } catch (e) {
                 typing.remove();
-                if (e.message === 'NO_KEY') {
-                    addMessage("設定画面からAPIキーを入力してね😢", "lila");
-                } else {
-                    addMessage("通信エラーみたい…もう一度送ってくれる？🙏", "lila");
-                }
-                changeEmotion('sad');
+                addMessage(`通信エラーが出ちゃった😢<br><span class="text-[10px] text-red-400">${e.message}</span>`, "lila");
+                lilaAvatar.src = `lila_sad.png`;
             } finally {
                 sendBtn.disabled = false;
             }
-        }
-
-        function changeEmotion(emo) {
-            const valid = ["angry", "surprised", "sad", "big_smile", "base_smile", "neutral", "wink", "skeptical", "scared"];
-            const target = valid.includes(emo) ? emo : "base_smile";
-            lilaAvatar.style.transform = 'scale(0.9) rotate(-3deg)';
-            flashEffect.style.display = 'block';
-            setTimeout(() => {
-                lilaAvatar.src = `lila_${target}.png`;
-                lilaAvatar.style.transform = 'scale(1) rotate(0deg)';
-                flashEffect.style.display = 'none';
-            }, 150);
-        }
-
-        function addMessage(html, sender, english = null) {
-            const wrap = document.createElement('div');
-            wrap.className = `flex ${sender === 'user' ? 'justify-end' : 'justify-start'} fade-in mb-4`;
-            const bub = document.createElement('div');
-            bub.className = sender === 'user' ? 'bubble-user p-4 max-w-[85%] text-sm font-medium' : 'bubble-lila p-4 max-w-[85%] text-sm leading-relaxed';
-            bub.innerHTML = html;
-            
-            if (sender === 'lila' && english) {
-                const btn = document.createElement('div');
-                btn.className = "save-btn"; btn.innerHTML = "＋";
-                btn.onclick = () => saveWord(english);
-                bub.appendChild(btn);
-            }
-            
-            wrap.appendChild(bub);
-            chatLog.appendChild(wrap);
-            chatLog.scrollTop = chatLog.scrollHeight;
-            return wrap;
         }
 
         function saveApiKey() {
@@ -268,36 +188,23 @@
                 userKey = key;
                 onlineDot.classList.replace('bg-gray-300', 'bg-green-500');
                 togglePanel('settings-panel');
-                addMessage("鍵をセットしたよ！コウスケ、これからいっぱいお話ししようね❤️", "lila");
-                changeEmotion('big_smile');
+                addMessage("鍵をセットしたよ！✨", "lila");
             }
         }
 
-        function saveWord(w) {
-            if (!savedWords.includes(w)) {
-                savedWords.push(w);
-                localStorage.setItem('lila_words', JSON.stringify(savedWords));
-                renderWordBank();
-                showToast("Word Bank に保存したよ！📓");
-            }
-        }
-
-        function renderWordBank() {
-            const list = document.getElementById('word-list');
-            list.innerHTML = savedWords.length ? savedWords.map(w => `
-                <div class="bg-teal-50 p-4 rounded-2xl border border-teal-100 flex justify-between items-center">
-                    <p class="text-sm font-bold text-teal-800">${w}</p>
-                </div>
-            `).join('') : '<p class="text-center text-gray-400 text-sm mt-20">Empty</p>';
+        function addMessage(html, sender, english = null) {
+            const wrap = document.createElement('div');
+            wrap.className = `flex ${sender === 'user' ? 'justify-end' : 'justify-start'} mb-4`;
+            const bub = document.createElement('div');
+            bub.className = sender === 'user' ? 'bubble-user p-4 max-w-[85%] text-sm' : 'bubble-lila p-4 max-w-[85%] text-sm';
+            bub.innerHTML = html;
+            wrap.appendChild(bub);
+            chatLog.appendChild(wrap);
+            chatLog.scrollTop = chatLog.scrollHeight;
+            return wrap;
         }
 
         function togglePanel(id) { document.getElementById(id).classList.toggle('panel-open'); }
-        function showToast(m) {
-            const t = document.createElement('div');
-            t.className = "fixed bottom-24 left-1/2 -translate-x-1/2 bg-black/70 text-white px-6 py-3 rounded-full text-xs font-bold fade-in z-[200]";
-            t.innerText = m; document.body.appendChild(t);
-            setTimeout(() => t.remove(), 2000);
-        }
     </script>
 </body>
 </html>
