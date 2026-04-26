@@ -69,22 +69,38 @@
                     Connect 🔐
                 </button>
                 <div id="debug-info" class="p-4 bg-gray-50 rounded-2xl text-[9px] text-gray-400 font-mono overflow-auto max-h-32">
-                    Version: 3.2 (Bug Fixed)<br>
+                    Version: 3.3 (English Enabled)<br>
                     Ready.
                 </div>
+            </div>
+        </div>
+
+        <!-- Word Bank Panel -->
+        <div id="word-bank-panel" class="side-panel p-8">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-2xl font-black text-teal-800">Word Bank 📓</h2>
+                <button onclick="togglePanel('word-bank-panel')" class="text-gray-400 p-2">✕</button>
+            </div>
+            <div id="word-list" class="flex-1 overflow-y-auto space-y-4">
+                <p class="text-center text-gray-400 text-sm mt-20">まだ空っぽだよ。＋ボタンで保存してね！</p>
             </div>
         </div>
 
         <!-- Top Header -->
         <div class="p-6 flex flex-col items-center relative border-b border-teal-100/50">
             <button onclick="togglePanel('settings-panel')" class="absolute top-6 left-6 text-gray-300">⚙️</button>
+            <div class="absolute top-6 right-6">
+                <button onclick="togglePanel('word-bank-panel')" class="flex items-center gap-1 text-[11px] font-black text-teal-600 bg-teal-50 px-3 py-1.5 rounded-full border border-teal-100">
+                    📓 <span class="tracking-tighter">BANK</span>
+                </button>
+            </div>
             <div class="relative">
                 <img id="lila-avatar" src="lila_base_smile.png" alt="Lila" 
                      class="w-28 h-28 rounded-full border-4 border-white shadow-xl object-cover transition-transform duration-300">
                 <div id="online-dot" class="absolute bottom-2 right-2 w-5 h-5 bg-gray-300 border-4 border-white rounded-full shadow-sm"></div>
             </div>
             <h1 class="mt-3 text-2xl font-black text-teal-800 tracking-tighter">Lila AI</h1>
-            <div class="text-[9px] text-teal-600 font-bold tracking-widest mt-1 uppercase bg-teal-50 px-2 py-0.5 rounded-full border border-teal-100">Auto-Detect v3.2</div>
+            <div class="text-[9px] text-teal-600 font-bold tracking-widest mt-1 uppercase bg-teal-50 px-2 py-0.5 rounded-full border border-teal-100">Auto-Detect v3.3</div>
         </div>
 
         <div id="chat-log" class="chat-container space-y-5"></div>
@@ -108,14 +124,16 @@
         const sendBtn = document.getElementById('send-btn');
         const debugInfo = document.getElementById('debug-info');
 
-        // 設定画面から保存された鍵を読み込む
+        // 設定画面から保存された鍵と単語帳を読み込む
         let userKey = localStorage.getItem('lila_api_key') || "";
+        let savedWords = JSON.parse(localStorage.getItem('lila_words') || "[]");
 
         window.onload = () => {
+            renderWordBank();
             if (userKey) {
                 apiKeyInput.value = userKey;
                 onlineDot.classList.replace('bg-gray-300', 'bg-green-500');
-                addMessage("コウスケ！今度こそバッチリ直したよ！設定した鍵で私とお話ししよう❤️", "lila");
+                addMessage("コウスケ！英語の機能（Word Bank）をバッチリ復活させたよ！右上のBANKボタンから確認してね❤️", "lila");
             } else {
                 addMessage("コウスケ、私のミスでごめんね😢 左上の⚙️マークからもう一度鍵を入れてみて！", "lila");
             }
@@ -161,8 +179,9 @@
             const url = `https://generativelanguage.googleapis.com/v1beta/${targetModel}:generateContent?key=${userKey}`;
 
             const promptText = `あなたは英語学習パートナーの「リーラ」です。性格は明るく、ユーザーの「コウスケ」が大好きです。日本語の中に時々役立つ英語フレーズを混ぜて話します。
+必ず1つ、会話に関連する自然で役立つ短い英語フレーズを提案してください。
 必ず以下のJSON形式のみで返答してください。余計な文章は一切含めないでください。
-{"emotion": "angry, surprised, sad, big_smile, base_smile, neutral, wink, skeptical, scared のいずれか", "text": "返信文", "english": "役立つ英語フレーズ(あれば)"}
+{"emotion": "angry, surprised, sad, big_smile, base_smile, neutral, wink, skeptical, scared のいずれか", "text": "返信文", "english": "役立つ英語フレーズ(必須)"}
 
 ユーザーの言葉：${msg}`;
 
@@ -245,13 +264,7 @@
             if (sender === 'lila' && english) {
                 const btn = document.createElement('div');
                 btn.className = "save-btn"; btn.innerHTML = "＋";
-                btn.onclick = () => {
-                    const toast = document.createElement('div');
-                    toast.className = "fixed bottom-24 left-1/2 -translate-x-1/2 bg-teal-800 text-white px-6 py-3 rounded-full text-xs font-bold z-[200] shadow-xl";
-                    toast.innerText = `"${english}" を覚えたよ！📓`;
-                    document.body.appendChild(toast);
-                    setTimeout(() => toast.remove(), 2000);
-                };
+                btn.onclick = () => saveWord(english);
                 bub.appendChild(btn);
             }
             
@@ -259,6 +272,29 @@
             chatLog.appendChild(wrap);
             chatLog.scrollTop = chatLog.scrollHeight;
             return wrap;
+        }
+
+        function saveWord(w) {
+            if (!savedWords.includes(w)) {
+                savedWords.push(w);
+                localStorage.setItem('lila_words', JSON.stringify(savedWords));
+                renderWordBank();
+                
+                const toast = document.createElement('div');
+                toast.className = "fixed bottom-24 left-1/2 -translate-x-1/2 bg-teal-800 text-white px-6 py-3 rounded-full text-xs font-bold z-[200] shadow-xl";
+                toast.innerText = `"${w}" を覚えたよ！📓`;
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 2000);
+            }
+        }
+
+        function renderWordBank() {
+            const list = document.getElementById('word-list');
+            list.innerHTML = savedWords.length ? savedWords.map(w => `
+                <div class="bg-teal-50 p-4 rounded-2xl border border-teal-100 flex justify-between items-center mb-3">
+                    <p class="text-sm font-bold text-teal-800">${w}</p>
+                </div>
+            `).join('') : '<p class="text-center text-gray-400 text-sm mt-20">まだ空っぽだよ。＋ボタンで保存してね！</p>';
         }
 
         function togglePanel(id) { document.getElementById(id).classList.toggle('panel-open'); }
