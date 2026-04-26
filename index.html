@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Lila AI Buddy</title>
+    <title>Lila AI Buddy v3.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&family=Noto+Sans+JP:wght@400;700&display=swap');
@@ -32,6 +32,11 @@
             background: linear-gradient(135deg, #0d9488, #0f766e);
             color: white; border-radius: 1.2rem 1.2rem 0 1.2rem;
         }
+        .side-panel {
+            position: absolute; right: -100%; top: 0; width: 100%; height: 100%;
+            background: white; transition: all 0.4s ease; z-index: 100;
+        }
+        .panel-open { right: 0 !important; }
         .typing-dot {
             width: 5px; height: 5px; background: #2dd4bf; border-radius: 50%;
             display: inline-block; animation: typing 1.4s infinite ease-in-out both;
@@ -48,15 +53,38 @@
 
     <div class="app-shell overflow-hidden">
         
+        <!-- Settings Panel -->
+        <div id="settings-panel" class="side-panel p-8">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-2xl font-black text-teal-800">Settings ⚙️</h2>
+                <button onclick="togglePanel('settings-panel')" class="text-gray-400 p-2">✕</button>
+            </div>
+            <div class="space-y-6">
+                <div>
+                    <label class="text-xs font-bold text-gray-400 mb-2 block tracking-widest">API Key</label>
+                    <input type="password" id="api-key-input" placeholder="AIza..." 
+                           class="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-teal-500">
+                </div>
+                <button onclick="saveApiKey()" class="w-full py-4 bg-teal-600 text-white rounded-2xl font-black shadow-lg">
+                    Connect 🔐
+                </button>
+                <div id="debug-info" class="p-4 bg-gray-50 rounded-2xl text-[9px] text-gray-400 font-mono overflow-auto max-h-32">
+                    Version: 3.2 (Bug Fixed)<br>
+                    Ready.
+                </div>
+            </div>
+        </div>
+
         <!-- Top Header -->
         <div class="p-6 flex flex-col items-center relative border-b border-teal-100/50">
+            <button onclick="togglePanel('settings-panel')" class="absolute top-6 left-6 text-gray-300">⚙️</button>
             <div class="relative">
                 <img id="lila-avatar" src="lila_base_smile.png" alt="Lila" 
                      class="w-28 h-28 rounded-full border-4 border-white shadow-xl object-cover transition-transform duration-300">
-                <div class="absolute bottom-2 right-2 w-5 h-5 bg-green-500 border-4 border-white rounded-full shadow-sm"></div>
+                <div id="online-dot" class="absolute bottom-2 right-2 w-5 h-5 bg-gray-300 border-4 border-white rounded-full shadow-sm"></div>
             </div>
             <h1 class="mt-3 text-2xl font-black text-teal-800 tracking-tighter">Lila AI</h1>
-            <div class="text-[9px] text-teal-600 font-bold tracking-widest mt-1 uppercase bg-teal-50 px-2 py-0.5 rounded-full border border-teal-100">Auto-Detect v3.1</div>
+            <div class="text-[9px] text-teal-600 font-bold tracking-widest mt-1 uppercase bg-teal-50 px-2 py-0.5 rounded-full border border-teal-100">Auto-Detect v3.2</div>
         </div>
 
         <div id="chat-log" class="chat-container space-y-5"></div>
@@ -72,29 +100,38 @@
     </div>
 
     <script>
-        // 👇【重要】ここにコウスケが取得した鍵「AIza...」を入れてね！
-        // 必ず半角の「"」で囲んでね！ 例: "AIzaSy..."
-        const apiKey = "AIzaSyCDnwJEpcS8wNV1VoaBT8MvEuc1MEUw6LM"; 
-
         const chatLog = document.getElementById('chat-log');
         const userInput = document.getElementById('user-input');
         const lilaAvatar = document.getElementById('lila-avatar');
+        const onlineDot = document.getElementById('online-dot');
+        const apiKeyInput = document.getElementById('api-key-input');
         const sendBtn = document.getElementById('send-btn');
+        const debugInfo = document.getElementById('debug-info');
+
+        // 設定画面から保存された鍵を読み込む
+        let userKey = localStorage.getItem('lila_api_key') || "";
 
         window.onload = () => {
-            addMessage("コウスケ！「使える脳みそ(モデル)を全自動で探す機能」をつけたよ！これでエラーは回避できるはず！話しかけてみて❤️", "lila");
+            if (userKey) {
+                apiKeyInput.value = userKey;
+                onlineDot.classList.replace('bg-gray-300', 'bg-green-500');
+                addMessage("コウスケ！今度こそバッチリ直したよ！設定した鍵で私とお話ししよう❤️", "lila");
+            } else {
+                addMessage("コウスケ、私のミスでごめんね😢 左上の⚙️マークからもう一度鍵を入れてみて！", "lila");
+            }
         };
 
         async function fetchAI(msg) {
-            if(apiKey === "" || apiKey === "AIzaSyCDnwJEpcS8wNV1VoaBT8MvEuc1MEUw6LM") {
-                throw new Error("鍵(APIキー)が設定されていないみたい！コードの中の apiKey の部分に鍵を入れてね！");
+            // ここで設定画面の鍵（userKey）をチェックする！
+            if (!userKey || userKey === "") {
+                throw new Error("鍵(APIキー)が設定されていないみたい！左上の⚙️マークから入力してね！");
             }
 
             let targetModel = "";
 
-            // 🌟 STEP 1: コウスケの鍵で「どのモデルが使えるか」をGoogleに聞く！
             try {
-                const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
+                // コウスケの鍵(userKey)でモデルを探す
+                const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${userKey}`;
                 const listRes = await fetch(listUrl);
                 
                 if (!listRes.ok) {
@@ -103,8 +140,6 @@
                 }
                 
                 const listData = await listRes.json();
-                
-                // 「文章を作れる(generateContent)」かつ「gemini」という名前のモデルを探す
                 const availableModels = listData.models.filter(m => 
                     m.supportedGenerationMethods && 
                     m.supportedGenerationMethods.includes("generateContent") && 
@@ -112,22 +147,18 @@
                 );
 
                 if (availableModels.length === 0) {
-                    throw new Error("コウスケの鍵で使えるGeminiモデルが一つも見つからなかったよ😢 新しいプロジェクトでAPIキーを作り直す必要があるかも！");
+                    throw new Error("コウスケの鍵で使えるモデルが見つからなかったよ😢");
                 }
 
-                // "flash" という名前がついている軽くて速いモデルを優先的に探す
                 const flashModel = availableModels.find(m => m.name.includes("flash"));
                 targetModel = flashModel ? flashModel.name : availableModels[0].name;
 
-                console.log("自動で見つけたモデル:", targetModel);
-
             } catch (error) {
-                throw new Error(`使える脳みそ(モデル)を探せなかったよ😢 原因: ${error.message}`);
+                throw new Error(`モデルを探せなかったよ😢 原因: ${error.message}`);
             }
 
-            // 🌟 STEP 2: 見つけたモデルを使って、いざ通信！
-            // targetModel には "models/gemini-1.5-flash" のような文字が入るよ
-            const url = `https://generativelanguage.googleapis.com/v1beta/${targetModel}:generateContent?key=${apiKey}`;
+            // 見つけたモデルとコウスケの鍵(userKey)を使って通信！
+            const url = `https://generativelanguage.googleapis.com/v1beta/${targetModel}:generateContent?key=${userKey}`;
 
             const promptText = `あなたは英語学習パートナーの「リーラ」です。性格は明るく、ユーザーの「コウスケ」が大好きです。日本語の中に時々役立つ英語フレーズを混ぜて話します。
 必ず以下のJSON形式のみで返答してください。余計な文章は一切含めないでください。
@@ -139,39 +170,24 @@
                 contents: [{ parts: [{ text: promptText }] }]
             };
 
-            const delays = [1000, 2000, 4000];
-            
-            for (let i = 0; i <= delays.length; i++) {
-                try {
-                    const response = await fetch(url, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
 
-                    if (!response.ok) {
-                        const errorDetails = await response.json();
-                        throw new Error(`APIエラー(${targetModel}): ${errorDetails.error?.message || response.status}`);
-                    }
-
-                    const result = await response.json();
-                    const aiText = result.candidates[0].content.parts[0].text;
-                    
-                    const jsonMatch = aiText.match(/\{[\s\S]*\}/);
-                    if (!jsonMatch) throw new Error("JSON形式の抽出に失敗しました");
-                    
-                    // 成功したら、使ったモデルの名前もこっそり返す
-                    const parsedData = JSON.parse(jsonMatch[0]);
-                    parsedData._usedModel = targetModel; 
-                    return parsedData;
-
-                } catch (error) {
-                    if (i === delays.length) {
-                        throw new Error(`${error.message}`);
-                    }
-                    await new Promise(res => setTimeout(res, delays[i]));
-                }
+            if (!response.ok) {
+                const errorDetails = await response.json();
+                throw new Error(`APIエラー(${targetModel}): ${errorDetails.error?.message || response.status}`);
             }
+
+            const result = await response.json();
+            const aiText = result.candidates[0].content.parts[0].text;
+            
+            const jsonMatch = aiText.match(/\{[\s\S]*\}/);
+            if (!jsonMatch) throw new Error("JSON形式の抽出に失敗しました");
+            
+            return JSON.parse(jsonMatch[0]);
         }
 
         async function handleSend() {
@@ -197,15 +213,25 @@
 
                 addMessage(ai.text, 'lila', ai.english);
                 
-                // デバッグ用に、どのモデルが使われたかをこっそりコンソールに出す
-                console.log(`接続成功！使用したモデル: ${ai._usedModel}`);
-
             } catch (e) {
                 typing.remove();
-                addMessage(`通信がうまくいかなかったよ😢<br><span class="text-[10px] text-red-500 font-mono">原因: ${e.message}</span>`, "lila");
+                debugInfo.innerText = `Error: ${e.message}`;
+                addMessage(`通信エラー😢<br><span class="text-[10px] text-red-500 font-mono">原因: ${e.message}</span>`, "lila");
                 lilaAvatar.src = "lila_sad.png";
             } finally {
                 sendBtn.disabled = false;
+            }
+        }
+
+        function saveApiKey() {
+            const key = apiKeyInput.value.trim();
+            if (key) {
+                localStorage.setItem('lila_api_key', key);
+                userKey = key; // ←★ここが反映されるように直したよ！
+                onlineDot.classList.replace('bg-gray-300', 'bg-green-500');
+                debugInfo.innerText = "Status: Key saved & applied!";
+                togglePanel('settings-panel');
+                addMessage("鍵をセットしたよ！コウスケ、話しかけてみて！❤️", "lila");
             }
         }
 
@@ -234,6 +260,8 @@
             chatLog.scrollTop = chatLog.scrollHeight;
             return wrap;
         }
+
+        function togglePanel(id) { document.getElementById(id).classList.toggle('panel-open'); }
     </script>
 </body>
 </html>
