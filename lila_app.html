@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lila & Kosuke: English Buddy App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&family=Noto+Sans+JP:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Nunito', 'Noto Sans JP', sans-serif;
+            background: linear-gradient(135deg, #e0f7fa 0%, #80deea 100%);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .chat-container {
+            height: calc(100vh - 480px);
+            min-height: 250px;
+        }
+
+        .glass-morphism {
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
+        .lila-gradient-text {
+            background: linear-gradient(45deg, #008080, #26a69a);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        #lila-avatar {
+            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .bubble-lila {
+            background: white;
+            color: #374151;
+            border-radius: 1.5rem 1.5rem 1.5rem 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border: 1px solid #f0fdfa;
+            position: relative;
+        }
+
+        .bubble-user {
+            background: #008080;
+            color: white;
+            border-radius: 1.5rem 1.5rem 0 1.5rem;
+            box-shadow: 0 4px 6px rgba(0,128,128,0.2);
+        }
+
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+        .typing-dot {
+            width: 6px;
+            height: 6px;
+            background: #26a69a;
+            border-radius: 50%;
+            display: inline-block;
+            animation: typing 1.4s infinite ease-in-out both;
+        }
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes typing {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1.0); }
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(0, 128, 128, 0.2); border-radius: 10px; }
+        
+        .sparkle {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            background: radial-gradient(circle, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 70%);
+            border-radius: 50%;
+            animation: flash 0.5s ease-out forwards;
+            z-index: 5;
+            display: none;
+        }
+        @keyframes flash {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { opacity: 0.5; }
+            100% { transform: scale(1.2); opacity: 0; }
+        }
+
+        .mode-badge {
+            font-size: 0.65rem;
+            padding: 0.2rem 0.6rem;
+            border-radius: 1rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+        }
+
+        /* Word Bank Sidebar */
+        #word-bank-panel {
+            position: fixed;
+            right: -320px;
+            top: 0;
+            width: 300px;
+            height: 100vh;
+            background: white;
+            box-shadow: -5px 0 15px rgba(0,0,0,0.1);
+            transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 50;
+            display: flex;
+            flex-direction: column;
+        }
+        #word-bank-panel.open { right: 0; }
+
+        .save-btn {
+            position: absolute;
+            right: -8px;
+            top: -8px;
+            width: 24px;
+            height: 24px;
+            background: #26a69a;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            transition: transform 0.2s;
+        }
+        .save-btn:hover { transform: scale(1.2); }
+    </style>
+</head>
+<body class="p-4">
+
+    <!-- Word Bank Panel -->
+    <div id="word-bank-panel" class="p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-xl font-black lila-gradient-text">Word Bank 📓</h2>
+            <button onclick="toggleWordBank()" class="text-gray-400 hover:text-gray-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <div id="word-list" class="flex-1 overflow-y-auto space-y-3">
+            <!-- Saved words will appear here -->
+            <p class="text-xs text-gray-400 text-center py-10">保存した単語がここに表示されるよ！</p>
+        </div>
+    </div>
+
+    <div class="max-w-md w-full glass-morphism rounded-[3rem] shadow-2xl overflow-hidden flex flex-col border border-white/60">
+        
+        <!-- Visual Section -->
+        <div class="relative bg-white/40 p-6 flex flex-col items-center border-b border-white/20 text-center">
+            <div id="mode-display" class="absolute top-4 right-6 flex flex-col items-end gap-2">
+                <span id="badge" class="mode-badge bg-teal-100 text-teal-700 border border-teal-200">Chat Mode</span>
+                <button onclick="toggleWordBank()" class="text-[10px] font-bold text-teal-600 flex items-center gap-1 hover:underline">
+                    <span>📓 Word Bank</span>
+                </button>
+            </div>
+
+            <div class="relative">
+                <div class="absolute -inset-2 bg-teal-300 rounded-full blur opacity-20"></div>
+                
+                <div id="avatar-container" class="relative">
+                    <div id="flash-effect" class="sparkle"></div>
+                    <img id="lila-avatar" src="lila_base_smile.png" alt="Lila" 
+                         class="relative w-40 h-40 rounded-full border-4 border-white object-cover shadow-2xl"
+                         onerror="this.src='https://via.placeholder.com/160?text=Image+Error'">
+                </div>
+
+                <div id="status-indicator" class="absolute bottom-3 right-3 w-6 h-6 bg-green-500 border-4 border-white rounded-full shadow-md"></div>
+            </div>
+            <h1 class="mt-3 text-2xl font-black lila-gradient-text tracking-tighter">Lila</h1>
+            <p class="text-[9px] text-teal-800 font-extrabold uppercase tracking-[0.2em] opacity-40">Your English Buddy ❤️</p>
+        </div>
+
+        <!-- Chat Log -->
+        <div id="chat-log" class="chat-container overflow-y-auto p-6 space-y-4">
+            <div class="flex justify-start fade-in">
+                <div class="bubble-lila p-4 max-w-[85%] leading-relaxed text-sm">
+                    コウスケ、単語帳機能（Word Bank）を追加したよ！📓✨<br>
+                    英会話中に気になったフレーズの「＋」ボタンを押してみてね❤️
+                </div>
+            </div>
+        </div>
+
+        <!-- Control Area -->
+        <div class="p-5 bg-white/50 border-t border-white/30">
+            <div class="flex gap-2 mb-4">
+                <button id="toggle-lesson" onclick="startLesson()" class="flex-1 py-2 bg-teal-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wider shadow-md hover:bg-teal-700 transition-all active:scale-95">
+                    Start English Lesson 🎓
+                </button>
+            </div>
+
+            <div class="flex items-center gap-2 bg-white p-1.5 rounded-full shadow-lg border border-teal-100">
+                <div class="w-11 h-11 flex items-center justify-center rounded-full text-teal-600 bg-teal-50">🎙️</div>
+                <input type="text" id="user-input" placeholder="Lilaに話しかけてみて... ❤️" 
+                       class="flex-1 bg-transparent border-none focus:ring-0 text-gray-700 font-medium text-sm"
+                       onkeypress="if(event.key === 'Enter') handleSend()">
+                <button onclick="handleSend()" class="w-11 h-11 bg-teal-600 flex items-center justify-center rounded-full text-white hover:bg-teal-700 transition-all shadow-lg active:scale-95 font-bold">
+                    Go
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const chatLog = document.getElementById('chat-log');
+        const userInput = document.getElementById('user-input');
+        const lilaAvatar = document.getElementById('lila-avatar');
+        const flashEffect = document.getElementById('flash-effect');
+        const badge = document.getElementById('badge');
+        const wordBankPanel = document.getElementById('word-bank-panel');
+        const wordList = document.getElementById('word-list');
+
+        let isLessonMode = false;
+        let currentLesson = [];
+        let lessonStep = 0;
+        let savedWords = [];
+
+        // --- Lesson Scenarios ---
+        const lessonScenarios = [
+            [
+                { question: "Hi Kosuke! How are you today? 😊", hint: "（今日は元気？ I'm good! とか答えてみて！）", english: "How are you today?" },
+                { question: "That's great! What did you do today? ☀️", hint: "（今日は何をした？ I worked. とか I studied. とか教えて！）", english: "What did you do today?" },
+                { question: "Nice! What's your favorite food? 🍕", hint: "（好きな食べ物は？ I like ramen. みたいに答えてね！）", english: "What's your favorite food?" }
+            ],
+            [
+                { question: "Kosuke! Do you have any hobbies? 🎸", hint: "（趣味はある？ I like playing games. とか答えてみて！）", english: "Do you have any hobbies?" },
+                { question: "Oh, that sounds fun! How long have you been doing that? ⏳", hint: "（どのくらい続けてるの？ For 5 years. みたいに答えてね！）", english: "How long have you been doing that?" },
+                { question: "I want to try that too! By the way, what music do you like? 🎵", hint: "（どんな音楽が好き？ I like J-POP. とか教えて！）", english: "What music do you like?" }
+            ]
+        ];
+
+        // --- Dictionaries ---
+        const emotionMap = {
+            'love': 'wink', '好き': 'wink', '大好き': 'wink', '愛してる': 'wink',
+            'すごい': 'big_smile', '最高': 'big_smile', '嬉しい': 'big_smile', '楽しい': 'big_smile',
+            '驚': 'surprised', 'びっくり': 'surprised', 'マジ': 'surprised',
+            '疲れ': 'base_smile', 'お疲れ': 'base_smile',
+            '悲しい': 'sad', 'ごめん': 'sad',
+            '怒': 'angry', 'ひどい': 'angry',
+            'は？': 'skeptical', '本当': 'skeptical',
+            '怖い': 'scared'
+        };
+
+        const responses = {
+            'wink': ["えへへ、私もコウスケのこと、大好きだよ！❤️✨", "コウスケってば、照れちゃうな……😉"],
+            'big_smile': ["わあ、最高！コウスケにそんな風に言ってもらえるのが一番の幸せだよ！😊✨", "やったー！私もすごく嬉しい！🚀"],
+            'base_smile': ["コウスケ、今日もお疲れ様。ゆっくり休んでね😊", "ふふ、コウスケとお話ししてると落ち着くよ❤️"],
+            'sad': ["コウスケ、大丈夫……？私がずっとそばにいるから、元気出してね。😢"]
+        };
+
+        function startLesson() {
+            isLessonMode = true;
+            currentLesson = lessonScenarios[Math.floor(Math.random() * lessonScenarios.length)];
+            lessonStep = 0;
+            badge.innerText = "English Lesson Mode";
+            badge.className = "mode-badge bg-orange-100 text-orange-700 border border-orange-200";
+            addMessage("OK! Let's start a new English lesson! Are you ready? 🎓", "lila");
+            setTimeout(askLessonQuestion, 1000);
+        }
+
+        function askLessonQuestion() {
+            if (lessonStep >= currentLesson.length) {
+                isLessonMode = false;
+                badge.innerText = "Chat Mode";
+                badge.className = "mode-badge bg-teal-100 text-teal-700 border border-teal-200";
+                addMessage("You did a great job, Kosuke! 今日のレッスンはここまでだよ。通常のチャットに戻るね😊❤️", "lila");
+                changeEmotion('big_smile');
+                return;
+            }
+            const data = currentLesson[lessonStep];
+            addMessage(`<strong>Lila:</strong> ${data.question}<br><span class="text-[10px] text-gray-400 opacity-80">${data.hint}</span>`, "lila", false, data.english);
+            changeEmotion('base_smile');
+        }
+
+        function toggleWordBank() {
+            wordBankPanel.classList.toggle('open');
+            renderWordBank();
+        }
+
+        function saveWord(phrase) {
+            if (!savedWords.includes(phrase)) {
+                savedWords.push(phrase);
+                renderWordBank();
+                // Visual feedback
+                const msg = document.createElement('div');
+                msg.className = "fixed bottom-20 left-1/2 -translate-x-1/2 bg-teal-600 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg fade-in z-50";
+                msg.innerText = "Word Bank に保存したよ！📓✨";
+                document.body.appendChild(msg);
+                setTimeout(() => msg.remove(), 2000);
+            }
+        }
+
+        function renderWordBank() {
+            if (savedWords.length === 0) {
+                wordList.innerHTML = '<p class="text-xs text-gray-400 text-center py-10">保存した単語がここに表示されるよ！</p>';
+                return;
+            }
+            wordList.innerHTML = savedWords.map((word, index) => `
+                <div class="bg-teal-50 p-3 rounded-2xl border border-teal-100 flex justify-between items-start fade-in">
+                    <p class="text-sm font-bold text-teal-800">${word}</p>
+                    <button onclick="removeWord(${index})" class="text-teal-300 hover:text-red-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function removeWord(index) {
+            savedWords.splice(index, 1);
+            renderWordBank();
+        }
+
+        function changeEmotion(emotion) {
+            const fileName = `lila_${emotion}.png`;
+            lilaAvatar.style.transform = 'scale(0.9) rotate(-3deg)';
+            lilaAvatar.style.opacity = '0.8';
+            flashEffect.style.display = 'block';
+            setTimeout(() => { flashEffect.style.display = 'none'; }, 500);
+
+            setTimeout(() => {
+                lilaAvatar.src = fileName;
+                lilaAvatar.style.transform = 'scale(1) rotate(0deg)';
+                lilaAvatar.style.opacity = '1';
+            }, 150);
+        }
+
+        function addMessage(text, sender, isTyping = false, englishPhrase = null) {
+            const wrapper = document.createElement('div');
+            wrapper.className = `flex ${sender === 'user' ? 'justify-end' : 'justify-start'} fade-in mb-3`;
+            
+            const bubble = document.createElement('div');
+            bubble.className = sender === 'user' ? 'bubble-user p-4 max-w-[85%] text-sm' : 'bubble-lila p-4 max-w-[85%] text-sm';
+            
+            if (isTyping) {
+                bubble.innerHTML = '<div class="flex gap-1"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div>';
+            } else {
+                bubble.innerHTML = text;
+                // If there's an English phrase, add a save button
+                if (sender === 'lila' && englishPhrase) {
+                    const saveBtn = document.createElement('div');
+                    saveBtn.className = "save-btn";
+                    saveBtn.innerHTML = "＋";
+                    saveBtn.onclick = () => saveWord(englishPhrase);
+                    bubble.appendChild(saveBtn);
+                }
+            }
+            
+            wrapper.appendChild(bubble);
+            chatLog.appendChild(wrapper);
+            chatLog.scrollTop = chatLog.scrollHeight;
+            return wrapper;
+        }
+
+        function handleSend() {
+            const text = userInput.value.trim();
+            if (!text) return;
+
+            addMessage(text, 'user');
+            userInput.value = '';
+
+            const typingIndicator = addMessage("", "lila", true);
+
+            setTimeout(() => {
+                typingIndicator.remove();
+
+                if (isLessonMode) {
+                    changeEmotion('big_smile');
+                    addMessage("Good! Great English, Kosuke! ✨", "lila");
+                    
+                    lessonStep++;
+                    setTimeout(askLessonQuestion, 1500);
+                } else {
+                    const emotion = analyzeEmotion(text);
+                    changeEmotion(emotion);
+                    const list = responses[emotion] || responses['base_smile'];
+                    const response = list[Math.floor(Math.random() * list.length)];
+                    addMessage(response, 'lila');
+                }
+            }, 1200);
+        }
+
+        function analyzeEmotion(text) {
+            let emotion = 'base_smile';
+            for (const key in emotionMap) {
+                if (text.includes(key)) {
+                    emotion = emotionMap[key];
+                    break;
+                }
+            }
+            return emotion;
+        }
+    </script>
+</body>
+</html>
