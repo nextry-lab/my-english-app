@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Lila AI Buddy v2.7</title>
+    <title>Lila AI Buddy v3.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&family=Noto+Sans+JP:wght@400;700&display=swap');
@@ -32,196 +32,162 @@
             background: linear-gradient(135deg, #0d9488, #0f766e);
             color: white; border-radius: 1.2rem 1.2rem 0 1.2rem;
         }
-        .side-panel {
-            position: absolute; right: -100%; top: 0; width: 100%; height: 100%;
-            background: white; transition: all 0.4s ease; z-index: 100;
-        }
-        .panel-open { right: 0 !important; }
         .typing-dot {
             width: 5px; height: 5px; background: #2dd4bf; border-radius: 50%;
             display: inline-block; animation: typing 1.4s infinite ease-in-out both;
         }
         @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1.0); } }
+        .save-btn {
+            position: absolute; right: -6px; top: -6px; width: 26px; height: 26px;
+            background: #14b8a6; color: white; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; font-size: 14px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
     </style>
 </head>
 <body>
 
     <div class="app-shell overflow-hidden">
         
-        <!-- Settings Panel -->
-        <div id="settings-panel" class="side-panel p-8">
-            <div class="flex justify-between items-center mb-8">
-                <h2 class="text-2xl font-black text-teal-800">Settings ⚙️</h2>
-                <button onclick="togglePanel('settings-panel')" class="text-gray-400 p-2">✕</button>
-            </div>
-            <div class="space-y-6">
-                <div>
-                    <label class="text-xs font-bold text-gray-400 mb-2 block tracking-widest">API Key</label>
-                    <input type="password" id="api-key-input" placeholder="AIza..." 
-                           class="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-teal-500">
-                </div>
-                <button onclick="saveApiKey()" class="w-full py-4 bg-teal-600 text-white rounded-2xl font-black shadow-lg active:scale-95 transition-all">
-                    Connect 🔐
-                </button>
-                <div id="debug-info" class="p-4 bg-gray-50 rounded-2xl text-[9px] text-gray-400 font-mono overflow-auto max-h-32 border border-gray-100">
-                    Version: 2.7 (Auto-Fallback Mode)<br>
-                    Ready to connect.
-                </div>
-            </div>
-        </div>
-
         <!-- Top Header -->
-        <div class="p-6 flex flex-col items-center relative">
-            <button onclick="togglePanel('settings-panel')" class="absolute top-6 left-6 text-gray-300">⚙️</button>
+        <div class="p-6 flex flex-col items-center relative border-b border-teal-100/50">
             <div class="relative">
                 <img id="lila-avatar" src="lila_base_smile.png" alt="Lila" 
-                     class="w-28 h-28 rounded-full border-4 border-white shadow-xl">
-                <div id="online-dot" class="absolute bottom-2 right-2 w-5 h-5 bg-gray-300 border-4 border-white rounded-full"></div>
+                     class="w-28 h-28 rounded-full border-4 border-white shadow-xl object-cover transition-transform duration-300">
+                <div class="absolute bottom-2 right-2 w-5 h-5 bg-green-500 border-4 border-white rounded-full shadow-sm"></div>
             </div>
-            <h1 class="mt-3 text-2xl font-black text-teal-800">Lila AI</h1>
-            <div class="text-[8px] text-teal-500/50 font-black tracking-tighter mt-1 uppercase">v2.7 Auto-Fallback</div>
+            <h1 class="mt-3 text-2xl font-black text-teal-800 tracking-tighter">Lila AI</h1>
+            <div class="text-[9px] text-teal-600 font-bold tracking-widest mt-1 uppercase bg-teal-50 px-2 py-0.5 rounded-full border border-teal-100">v3.0 Preview Env</div>
         </div>
 
         <div id="chat-log" class="chat-container space-y-5"></div>
 
         <div class="p-5 bg-white/80 border-t border-gray-100 pb-safe">
-            <div class="flex items-center gap-3 bg-gray-50 p-2 rounded-3xl border border-gray-100">
-                <input type="text" id="user-input" placeholder="Lilaに話しかけて... ❤️" 
-                       class="flex-1 bg-transparent border-none focus:ring-0 text-sm p-2"
+            <div class="flex items-center gap-3 bg-gray-50 p-2 rounded-3xl border border-gray-100 focus-within:ring-2 focus-within:ring-teal-500/20">
+                <input type="text" id="user-input" placeholder="Lilaに話しかけてみて... ❤️" 
+                       class="flex-1 bg-transparent border-none focus:ring-0 text-sm p-2 font-medium"
                        onkeypress="if(event.key === 'Enter') handleSend()">
-                <button id="send-btn" onclick="handleSend()" class="w-12 h-10 bg-teal-600 text-white rounded-2xl font-black">GO</button>
+                <button id="send-btn" onclick="handleSend()" class="w-12 h-10 bg-teal-600 text-white rounded-2xl font-black shadow-md active:scale-95 transition-all">GO</button>
             </div>
         </div>
     </div>
 
     <script>
+        // 【重要】プレビュー環境では、システムが自動でキーを注入するため空文字にします。
+        // ※ もしGitHubに公開してスマホで使う場合は、ここの "" の中に取得した「AIza...」のキーを入れてね！
+        const apiKey = ""; 
+
         const chatLog = document.getElementById('chat-log');
         const userInput = document.getElementById('user-input');
         const lilaAvatar = document.getElementById('lila-avatar');
-        const onlineDot = document.getElementById('online-dot');
-        const apiKeyInput = document.getElementById('api-key-input');
         const sendBtn = document.getElementById('send-btn');
-        const debugInfo = document.getElementById('debug-info');
-
-        let userKey = localStorage.getItem('lila_api_key') || "";
 
         window.onload = () => {
-            if (userKey) {
-                apiKeyInput.value = userKey;
-                onlineDot.classList.replace('bg-gray-300', 'bg-green-500');
-                addMessage("コウスケ！「使える窓口を自動で探す機能」を付けたよ！今度こそ私とお話しできるはず！❤️", "lila");
-            } else {
-                addMessage("左上の⚙️から「新しい鍵」を保存してね！✨", "lila");
-            }
+            addMessage("コウスケ！ついにプレビュー環境の扉が開いたよ！APIキーを入力しなくても、この画面なら私とお話しできるよ❤️ 話しかけてみて！", "lila");
         };
 
+        const systemPrompt = `あなたは英語学習パートナーの「リーラ」です。性格は明るく、ユーザーの「コウスケ」が大好きです。日本語の中に時々役立つ英語フレーズを混ぜて話します。`;
+
         async function fetchAI(msg) {
-            if (!userKey) throw new Error('NO_KEY');
+            // プレビュー環境専用のモデル
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+
+            const payload = {
+                contents: [{ parts: [{ text: msg }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+                generationConfig: { 
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "OBJECT",
+                        properties: {
+                            emotion: { type: "STRING", description: "angry, surprised, sad, big_smile, base_smile, neutral, wink, skeptical, or scared" },
+                            text: { type: "STRING" },
+                            english: { type: "STRING", description: "A useful short English phrase from the text, or empty string" }
+                        }
+                    }
+                }
+            };
+
+            // 安定して繋がるまで何度もリトライする機能（エクスポネンシャル・バックオフ）
+            const delays = [1000, 2000, 4000, 8000, 16000];
             
-            // 確実につながるモデルを順番に試す「自動フォールバック」リスト
-            const modelsToTry = [
-                "gemini-1.5-flash-latest", // 第1候補: 最新の高速モデル
-                "gemini-1.5-flash",        // 第2候補: 安定の高速モデル
-                "gemini-pro"               // 第3候補: 旧型だけど絶対に存在するモデル
-            ];
-
-            const prompt = `あなたは英語学習パートナーの「リーラ」です。性格は明るく、ユーザーの「コウスケ」が大好きです。日本語の中に時々英語フレーズを混ぜて話します。
-必ず以下のJSON形式のみで返答してください。余計な説明文は一切含めないでください。
-{"emotion": "base_smile", "text": "返信内容"}
-※表情は angry, surprised, sad, big_smile, base_smile, neutral, wink, skeptical, scared のいずれか。
-
-[USER MESSAGE]
-${msg}`;
-
-            let lastErrorMsg = "";
-
-            // モデルのリストを順番に試す
-            for (const model of modelsToTry) {
+            for (let i = 0; i <= delays.length; i++) {
                 try {
-                    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${userKey}`;
-                    
                     const response = await fetch(url, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            contents: [{ parts: [{ text: prompt }] }]
-                        })
+                        body: JSON.stringify(payload)
                     });
 
-                    if (!response.ok) {
-                        const error = await response.json();
-                        throw new Error(`[${model}] ` + (error.error?.message || `Status ${response.status}`));
-                    }
+                    if (!response.ok) throw new Error("API Connection Failed");
 
                     const result = await response.json();
-                    const aiText = result.candidates[0].content.parts[0].text;
-                    
-                    // JSON部分だけを確実に抽出する処理
-                    const jsonMatch = aiText.match(/\{[\s\S]*\}/);
-                    if (!jsonMatch) throw new Error("JSON形式の抽出に失敗しました");
-                    
-                    // 成功したら、どのモデルで繋がったかデバッグに記録して返す
-                    debugInfo.innerHTML = `Connected using:<br><span class="text-teal-600 font-bold">${model}</span>`;
-                    return JSON.parse(jsonMatch[0]);
-
-                } catch (e) {
-                    console.warn(`モデル ${model} は失敗しました: ${e.message}`);
-                    lastErrorMsg += `${e.message}<br>`;
-                    // 失敗した場合は次のモデルへ進む（ループ継続）
+                    return JSON.parse(result.candidates[0].content.parts[0].text);
+                } catch (error) {
+                    if (i === delays.length) {
+                        throw new Error("何度も試したけど、うまく繋がらなかったよ😢 もう一度話しかけてみて！");
+                    }
+                    await new Promise(res => setTimeout(res, delays[i]));
                 }
             }
-            
-            // 全部のモデルで失敗した場合
-            throw new Error(lastErrorMsg);
         }
 
         async function handleSend() {
             const val = userInput.value.trim();
             if(!val || sendBtn.disabled) return;
+
             addMessage(val, 'user');
             userInput.value = '';
             sendBtn.disabled = true;
+
             const typing = addMessage('<div class="flex gap-1 py-1"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div>', 'lila');
 
             try {
                 const ai = await fetchAI(val);
                 typing.remove();
+                
+                // 表情の切り替え
                 const valid = ["angry", "surprised", "sad", "big_smile", "base_smile", "neutral", "wink", "skeptical", "scared"];
-                lilaAvatar.src = `lila_${valid.includes(ai.emotion) ? ai.emotion : 'base_smile'}.png`;
-                addMessage(ai.text, 'lila');
+                lilaAvatar.style.transform = 'scale(0.9)';
+                setTimeout(() => {
+                    lilaAvatar.src = `lila_${valid.includes(ai.emotion) ? ai.emotion : 'base_smile'}.png`;
+                    lilaAvatar.style.transform = 'scale(1)';
+                }, 150);
+
+                addMessage(ai.text, 'lila', ai.english);
             } catch (e) {
                 typing.remove();
-                debugInfo.innerHTML = `<span class="text-red-500">All models failed:</span><br>${e.message}`;
-                addMessage(`ごめんね、まだうまく繋がらないみたい…😢<br><span class="text-[10px] text-red-400">⚙️設定からエラー内容を見てみて！</span>`, "lila");
+                addMessage(e.message, "lila");
                 lilaAvatar.src = "lila_sad.png";
-            } finally { sendBtn.disabled = false; }
-        }
-
-        function saveApiKey() {
-            const key = apiKeyInput.value.trim();
-            if (key) {
-                localStorage.setItem('lila_api_key', key);
-                userKey = key;
-                onlineDot.classList.replace('bg-gray-300', 'bg-green-500');
-                debugInfo.innerText = "Status: Key saved. Ready to test models.";
-                togglePanel('settings-panel');
-                addMessage("鍵を覚えたよ！今度こそコウスケとお話ししたいな❤️", "lila");
+            } finally {
+                sendBtn.disabled = false;
             }
         }
 
-        function addMessage(html, sender) {
+        function addMessage(html, sender, english = null) {
             const wrap = document.createElement('div');
             wrap.className = `flex ${sender === 'user' ? 'justify-end' : 'justify-start'} mb-4 fade-in`;
             const bub = document.createElement('div');
-            bub.className = sender === 'user' ? 'bubble-user p-4 max-w-[85%] text-sm' : 'bubble-lila p-4 max-w-[85%] text-sm';
+            bub.className = sender === 'user' ? 'bubble-user p-4 max-w-[85%] text-sm font-medium' : 'bubble-lila p-4 max-w-[85%] text-sm leading-relaxed';
             bub.innerHTML = html;
+            
+            if (sender === 'lila' && english) {
+                const btn = document.createElement('div');
+                btn.className = "save-btn"; btn.innerHTML = "＋";
+                btn.onclick = () => {
+                    const toast = document.createElement('div');
+                    toast.className = "fixed bottom-24 left-1/2 -translate-x-1/2 bg-teal-800 text-white px-6 py-3 rounded-full text-xs font-bold z-[200] shadow-xl";
+                    toast.innerText = `"${english}" を覚えたよ！📓`;
+                    document.body.appendChild(toast);
+                    setTimeout(() => toast.remove(), 2000);
+                };
+                bub.appendChild(btn);
+            }
+            
             wrap.appendChild(bub);
             chatLog.appendChild(wrap);
             chatLog.scrollTop = chatLog.scrollHeight;
             return wrap;
         }
-
-        function togglePanel(id) { document.getElementById(id).classList.toggle('panel-open'); }
     </script>
 </body>
 </html>
