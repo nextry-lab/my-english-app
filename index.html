@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Lila AI Buddy v3.9 ✨</title>
+    <title>Lila AI Buddy v3.9.1 ✨</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&family=Noto+Sans+JP:wght@400;700&display=swap');
@@ -76,7 +76,7 @@
                     Connect & Save 🔐
                 </button>
                 <div id="debug-info" class="p-4 bg-gray-50 rounded-2xl text-[10px] text-gray-400 font-mono overflow-auto max-h-32">
-                    Version: 3.9 (Gemini AI Plus)<br>
+                    Version: 3.9.1 (Stable Model Forced)<br>
                     Status: Ready.
                 </div>
             </div>
@@ -99,7 +99,7 @@
                     <div class="font-black text-purple-800">✨ 単語帳から物語</div>
                     <div class="text-[10px] text-purple-600 font-medium">BANKの単語を使ってリーラが物語を作るよ！</div>
                 </button>
-                <p class="text-[10px] text-center text-gray-400 mt-10">Gemini LLM Powered Features</p>
+                <p class="text-[10px] text-center text-gray-400 mt-10">Gemini 1.5 Flash Powered Features</p>
             </div>
         </div>
 
@@ -126,7 +126,7 @@
                 <div id="online-dot" class="absolute bottom-1 right-1 w-5 h-5 bg-gray-300 border-4 border-white rounded-full shadow-sm"></div>
             </div>
             <h1 class="mt-3 text-xl font-black text-teal-800 tracking-tighter">Lila AI Buddy</h1>
-            <div class="text-[9px] text-teal-600 font-bold tracking-widest mt-1 uppercase bg-teal-50 px-2 py-0.5 rounded-full border border-teal-100" id="mode-badge">AI Plus Mode v3.9</div>
+            <div class="text-[9px] text-teal-600 font-bold tracking-widest mt-1 uppercase bg-teal-50 px-2 py-0.5 rounded-full border border-teal-100" id="mode-badge">AI Plus Mode v3.9.1</div>
         </div>
 
         <!-- Mini Lesson & Tools Control -->
@@ -177,7 +177,7 @@
             if (userKey) {
                 apiKeyInput.value = userKey;
                 onlineDot.classList.replace('bg-gray-300', 'bg-green-500');
-                addMessage("コウスケ！Gemini AIをさらに活用した「✨AIメニュー」を追加したよ！新しい遊び方、試してみてね❤️", "lila");
+                addMessage("コウスケ！404エラーが出ないように、安定したモデルに修正したよ。今度は大丈夫なはず❤️", "lila");
             }
         };
 
@@ -194,7 +194,7 @@
                 btnText.innerText = `レッスン`;
                 btnIcon.innerText = "✏️";
                 btn.className = "flex-1 px-4 py-2 bg-blue-50 text-blue-600 font-bold text-xs rounded-full border border-blue-200";
-                modeBadge.innerText = "AI Plus Mode v3.9";
+                modeBadge.innerText = "AI Plus Mode v3.9.1";
             }
         }
 
@@ -220,8 +220,8 @@
             const typing = addMessage('<div class="typing-dot"></div>', 'lila');
             try {
                 const prompt = type === 'roleplay' 
-                    ? "【シチュエーション練習開始】ランダムに面白いシチュエーション（空港、レストラン、異世界、SFなど）を設定して、リーラがその中のキャラクターになってコウスケに英語で話しかけて。日本語の状況説明も付けて。"
-                    : `【単語帳物語】次の保存済み単語をすべて使って、リーラがコウスケのために短い物語を書いて。保存単語：${savedWords.join(', ')}`;
+                    ? "【シチュエーション練習開始】ランダムに面白いシチュエーションを設定して、英語で話しかけて。日本語の説明も付けて。"
+                    : `【単語帳物語】次の単語をすべて使って短い物語を書いて：${savedWords.join(', ')}`;
                 
                 const ai = await fetchAI(prompt);
                 typing.remove();
@@ -234,13 +234,14 @@
             }
         }
 
-        // --- Gemini API 呼び出し (Text & Audio) ---
-        async function callGemini(payload, endpoint = "generateContent") {
+        // --- Gemini API 呼び出し (Text) ---
+        async function callGemini(payload) {
             const apiKey = userKey;
-            const model = endpoint === "generateContent" ? "gemini-2.5-flash-preview-09-2025" : "gemini-2.5-flash-preview-tts";
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:${endpoint}?key=${apiKey}`;
+            // 🌟 最も安定している 1.5-flash に固定！
+            const model = "gemini-1.5-flash";
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
             
-            const delays = [1000, 2000, 4000, 8000, 16000];
+            const delays = [1000, 2000, 4000];
             for (let i = 0; i <= delays.length; i++) {
                 try {
                     const response = await fetch(url, {
@@ -265,41 +266,17 @@
             const result = await callGemini(payload);
             const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
             const jsonMatch = text.match(/\{[\s\S]*\}/);
+            if (!jsonMatch) throw new Error("データの解析に失敗しました。もう一度送ってみてね！");
             return JSON.parse(jsonMatch[0]);
         }
 
-        async function playTTS(text) {
-            const payload = {
-                contents: [{ parts: [{ text: `Say cheerfully: ${text}` }] }],
-                generationConfig: {
-                    responseModalities: ["AUDIO"],
-                    speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Kore" } } }
-                }
-            };
-            try {
-                const result = await callGemini(payload, "generateContent");
-                const pcmData = result.candidates[0].content.parts[0].inlineData.data;
-                const sampleRate = 24000; // Default for Kore
-                const wavBlob = pcmToWav(pcmData, sampleRate);
-                const audio = new Audio(URL.createObjectURL(wavBlob));
-                audio.play();
-            } catch (e) {
-                console.error("TTS Error:", e);
-            }
-        }
-
-        function pcmToWav(base64, sampleRate) {
-            const pcm = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
-            const wav = new ArrayBuffer(44 + pcm.length);
-            const view = new DataView(wav);
-            const writeStr = (off, s) => { for(let i=0; i<s.length; i++) view.setUint8(off+i, s.charCodeAt(i)); };
-            writeStr(0, 'RIFF'); view.setUint32(4, 36 + pcm.length, true); writeStr(8, 'WAVE');
-            writeStr(12, 'fmt '); view.setUint32(16, 16, true); view.setUint16(20, 1, true);
-            view.setUint16(22, 1, true); view.setUint32(24, sampleRate, true);
-            view.setUint32(28, sampleRate * 2, true); view.setUint16(32, 2, true);
-            view.setUint16(34, 16, true); writeStr(36, 'data'); view.setUint32(40, pcm.length, true);
-            new Uint8Array(wav, 44).set(pcm);
-            return new Blob([wav], { type: 'audio/wav' });
+        // --- Web Speech API を使った読み上げ (標準機能で安定化) ---
+        function playTTS(text) {
+            const uttr = new SpeechSynthesisUtterance();
+            uttr.text = text;
+            uttr.lang = 'en-US';
+            uttr.rate = 0.9;
+            speechSynthesis.speak(uttr);
         }
 
         // --- UI Logic ---
