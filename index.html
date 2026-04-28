@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Lila AI Buddy v3.8</title>
+    <title>Lila AI Buddy v3.9 ✨</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&family=Noto+Sans+JP:wght@400;700&display=swap');
@@ -47,6 +47,11 @@
             background: #14b8a6; color: white; border-radius: 50%;
             display: flex; align-items: center; justify-content: center; font-size: 14px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
+        .tts-btn {
+            position: absolute; right: -6px; bottom: -6px; width: 26px; height: 26px;
+            background: #0d9488; color: white; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
         .fade-in { animation: fadeIn 0.3s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
@@ -71,9 +76,30 @@
                     Connect & Save 🔐
                 </button>
                 <div id="debug-info" class="p-4 bg-gray-50 rounded-2xl text-[10px] text-gray-400 font-mono overflow-auto max-h-32">
-                    Version: 3.8 (v1beta Stable)<br>
+                    Version: 3.9 (Gemini AI Plus)<br>
                     Status: Ready.
                 </div>
+            </div>
+        </div>
+
+        <!-- AI Tools Panel -->
+        <div id="ai-tools-panel" class="side-panel p-8">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-2xl font-black text-teal-800">AI Menu ✨</h2>
+                <button onclick="togglePanel('ai-tools-panel')" class="text-gray-400 p-2 text-xl">✕</button>
+            </div>
+            <div class="space-y-4">
+                <button onclick="startFeature('roleplay')" class="w-full p-6 bg-blue-50 border border-blue-100 rounded-3xl text-left hover:bg-blue-100 transition-all">
+                    <div class="text-xl mb-1">🎭</div>
+                    <div class="font-black text-blue-800">✨ シチュエーション練習</div>
+                    <div class="text-[10px] text-blue-600 font-medium">AIが場面を設定して会話練習を始めるよ！</div>
+                </button>
+                <button onclick="startFeature('story')" class="w-full p-6 bg-purple-50 border border-purple-100 rounded-3xl text-left hover:bg-purple-100 transition-all">
+                    <div class="text-xl mb-1">📖</div>
+                    <div class="font-black text-purple-800">✨ 単語帳から物語</div>
+                    <div class="text-[10px] text-purple-600 font-medium">BANKの単語を使ってリーラが物語を作るよ！</div>
+                </button>
+                <p class="text-[10px] text-center text-gray-400 mt-10">Gemini LLM Powered Features</p>
             </div>
         </div>
 
@@ -83,9 +109,7 @@
                 <h2 class="text-2xl font-black text-teal-800">Word Bank 📓</h2>
                 <button onclick="togglePanel('word-bank-panel')" class="text-gray-400 p-2 text-xl">✕</button>
             </div>
-            <div id="word-list" class="flex-1 overflow-y-auto space-y-3">
-                <p class="text-center text-gray-400 text-sm mt-20">まだ空っぽだよ。リーラのメッセージの＋ボタンで保存してね！</p>
-            </div>
+            <div id="word-list" class="flex-1 overflow-y-auto space-y-3"></div>
         </div>
 
         <!-- Top Header -->
@@ -102,14 +126,17 @@
                 <div id="online-dot" class="absolute bottom-1 right-1 w-5 h-5 bg-gray-300 border-4 border-white rounded-full shadow-sm"></div>
             </div>
             <h1 class="mt-3 text-xl font-black text-teal-800 tracking-tighter">Lila AI Buddy</h1>
-            <div class="text-[9px] text-teal-600 font-bold tracking-widest mt-1 uppercase bg-teal-50 px-2 py-0.5 rounded-full border border-teal-100" id="mode-badge">Standard Mode v3.8</div>
+            <div class="text-[9px] text-teal-600 font-bold tracking-widest mt-1 uppercase bg-teal-50 px-2 py-0.5 rounded-full border border-teal-100" id="mode-badge">AI Plus Mode v3.9</div>
         </div>
 
-        <!-- Mini Lesson Control -->
-        <div class="px-6 py-2 bg-white/80 backdrop-blur-md border-b border-gray-100 flex justify-center relative z-10 shadow-sm">
-            <button id="learning-btn" onclick="toggleLearningMode()" class="px-5 py-2 bg-blue-50 text-blue-600 font-bold text-xs rounded-full border border-blue-200 shadow-sm flex items-center gap-2 transition-all active:scale-95">
+        <!-- Mini Lesson & Tools Control -->
+        <div class="px-6 py-2 bg-white/80 backdrop-blur-md border-b border-gray-100 flex justify-between items-center relative z-10 shadow-sm gap-2">
+            <button id="learning-btn" onclick="toggleLearningMode()" class="flex-1 px-4 py-2 bg-blue-50 text-blue-600 font-bold text-xs rounded-full border border-blue-200 shadow-sm flex items-center justify-center gap-2 transition-all active:scale-95">
                 <span id="learning-btn-icon">✏️</span> 
-                <span id="learning-btn-text">ミニレッスンを始める</span>
+                <span id="learning-btn-text">レッスン</span>
+            </button>
+            <button onclick="togglePanel('ai-tools-panel')" class="px-4 py-2 bg-teal-50 text-teal-600 font-bold text-xs rounded-full border border-teal-200 shadow-sm flex items-center justify-center gap-2 transition-all active:scale-95">
+                ✨ AIメニュー
             </button>
         </div>
 
@@ -150,9 +177,7 @@
             if (userKey) {
                 apiKeyInput.value = userKey;
                 onlineDot.classList.replace('bg-gray-300', 'bg-green-500');
-                addMessage("コウスケ！最新の接続設定に更新したよ！もしまた止まったら1分だけ待ってみてね❤️", "lila");
-            } else {
-                addMessage("コウスケ！左上の⚙️マークからAPIキーを教えてね。お話しできるのを待ってるよ！", "lila");
+                addMessage("コウスケ！Gemini AIをさらに活用した「✨AIメニュー」を追加したよ！新しい遊び方、試してみてね❤️", "lila");
             }
         };
 
@@ -161,17 +186,15 @@
             const btnIcon = document.getElementById('learning-btn-icon');
             const btn = document.getElementById('learning-btn');
             if (isLearningMode) {
-                btnText.innerText = `レッスン中 (${learningTurnCount}/${MAX_TURNS})`;
+                btnText.innerText = `(${learningTurnCount}/${MAX_TURNS})`;
                 btnIcon.innerText = "🛑";
-                btn.className = "px-5 py-2 bg-orange-50 text-orange-600 font-bold text-xs rounded-full border border-orange-200 shadow-sm flex items-center gap-2";
+                btn.className = "flex-1 px-4 py-2 bg-orange-50 text-orange-600 font-bold text-xs rounded-full border border-orange-200";
                 modeBadge.innerText = "Study Mode ✏️";
-                modeBadge.className = "text-[9px] text-orange-600 font-bold tracking-widest mt-1 uppercase bg-orange-50 px-2 py-0.5 rounded-full border border-orange-100";
             } else {
-                btnText.innerText = `ミニレッスンを始める`;
+                btnText.innerText = `レッスン`;
                 btnIcon.innerText = "✏️";
-                btn.className = "px-5 py-2 bg-blue-50 text-blue-600 font-bold text-xs rounded-full border border-blue-200 shadow-sm flex items-center gap-2";
-                modeBadge.innerText = "Standard Mode v3.8";
-                modeBadge.className = "text-[9px] text-teal-600 font-bold tracking-widest mt-1 uppercase bg-teal-50 px-2 py-0.5 rounded-full border border-teal-100";
+                btn.className = "flex-1 px-4 py-2 bg-blue-50 text-blue-600 font-bold text-xs rounded-full border border-blue-200";
+                modeBadge.innerText = "AI Plus Mode v3.9";
             }
         }
 
@@ -180,13 +203,9 @@
                 isLearningMode = false;
                 learningTurnCount = 0;
                 updateModeUI();
-                addMessage("またいつでもレッスンしようね！通常のおしゃべりに戻るよ❤️", "lila");
-                changeEmotion('base_smile');
+                addMessage("またいつでもレッスンしようね❤️", "lila");
             } else {
-                if (!userKey) {
-                    addMessage("レッスンを始める前に、⚙️からAPIキーを設定してね！", "lila");
-                    return;
-                }
+                if (!userKey) { addMessage("先に⚙️からAPIキーを設定してね！", "lila"); return; }
                 isLearningMode = true;
                 learningTurnCount = 1;
                 updateModeUI();
@@ -194,109 +213,140 @@
             }
         }
 
-        async function fetchAI(msg) {
-            if (!userKey) throw new Error("APIキーが設定されていません。⚙️から入力してください。");
-            
-            // 安定版の窓口とモデルを指定
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${userKey}`;
-
-            let instruction = isLearningMode ? 
-                (learningTurnCount === 1 ? "英語初心者向けミニレッスン(3問)の第1問目。簡単な質問を出し、日本語でヒントを添えて。" : 
-                 learningTurnCount <= MAX_TURNS ? "レッスン継続。前の回答を添削し、次の簡単な質問を出す。" : "レッスン最終回答。褒めて締めくくる。") :
-                "通常モード。日本語で楽しくおしゃべり。役立つ短い英語フレーズを1つ提案。";
-
-            const payload = {
-                contents: [{ parts: [{ text: `あなたはリーラです。${instruction}\n\n必ずこのJSON形式のみで返答：{"emotion":"angry,surprised,sad,big_smile,base_smile,neutral,wink,skeptical,scaredのいずれか","text":"返信本文","english":"英語フレーズ"}\n\nユーザー：${msg === true ? "レッスン開始！" : msg}` }] }]
-            };
-
-            const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-            
-            const result = await response.json();
-
-            if (!response.ok) {
-                if (response.status === 429) {
-                    throw new Error("Googleが制限中。1分待ってね☕️");
-                }
-                throw new Error(`エラー: ${result.error?.message || "通信エラー"}`);
+        async function startFeature(type) {
+            if (!userKey) { addMessage("先に⚙️からAPIキーを設定してね！", "lila"); return; }
+            togglePanel('ai-tools-panel');
+            sendBtn.disabled = true;
+            const typing = addMessage('<div class="typing-dot"></div>', 'lila');
+            try {
+                const prompt = type === 'roleplay' 
+                    ? "【シチュエーション練習開始】ランダムに面白いシチュエーション（空港、レストラン、異世界、SFなど）を設定して、リーラがその中のキャラクターになってコウスケに英語で話しかけて。日本語の状況説明も付けて。"
+                    : `【単語帳物語】次の保存済み単語をすべて使って、リーラがコウスケのために短い物語を書いて。保存単語：${savedWords.join(', ')}`;
+                
+                const ai = await fetchAI(prompt);
+                typing.remove();
+                addMessage(ai.text, 'lila', ai.english);
+            } catch (e) {
+                typing.remove();
+                addMessage(e.message, "lila");
+            } finally {
+                sendBtn.disabled = false;
             }
+        }
 
-            const rawText = result.candidates[0].content.parts[0].text;
-            const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-            if (!jsonMatch) throw new Error("データの解析に失敗しました。");
+        // --- Gemini API 呼び出し (Text & Audio) ---
+        async function callGemini(payload, endpoint = "generateContent") {
+            const apiKey = userKey;
+            const model = endpoint === "generateContent" ? "gemini-2.5-flash-preview-09-2025" : "gemini-2.5-flash-preview-tts";
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:${endpoint}?key=${apiKey}`;
             
+            const delays = [1000, 2000, 4000, 8000, 16000];
+            for (let i = 0; i <= delays.length; i++) {
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    return await response.json();
+                } catch (e) {
+                    if (i === delays.length) throw e;
+                    await new Promise(r => setTimeout(r, delays[i]));
+                }
+            }
+        }
+
+        async function fetchAI(msg) {
+            const instruction = isLearningMode ? "英語初心者ミニレッスン中。" : "通常モード。";
+            const payload = {
+                contents: [{ parts: [{ text: `あなたはリーラです。性格は明るく、ユーザーの「コウスケ」が大好き。${instruction}\n必ずこのJSON形式で返答：{"emotion":"表情名","text":"返信文","english":"英語フレーズ"}\n\nユーザー：${msg === true ? "レッスン開始！" : msg}` }] }]
+            };
+            const result = await callGemini(payload);
+            const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+            const jsonMatch = text.match(/\{[\s\S]*\}/);
             return JSON.parse(jsonMatch[0]);
         }
 
+        async function playTTS(text) {
+            const payload = {
+                contents: [{ parts: [{ text: `Say cheerfully: ${text}` }] }],
+                generationConfig: {
+                    responseModalities: ["AUDIO"],
+                    speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Kore" } } }
+                }
+            };
+            try {
+                const result = await callGemini(payload, "generateContent");
+                const pcmData = result.candidates[0].content.parts[0].inlineData.data;
+                const sampleRate = 24000; // Default for Kore
+                const wavBlob = pcmToWav(pcmData, sampleRate);
+                const audio = new Audio(URL.createObjectURL(wavBlob));
+                audio.play();
+            } catch (e) {
+                console.error("TTS Error:", e);
+            }
+        }
+
+        function pcmToWav(base64, sampleRate) {
+            const pcm = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+            const wav = new ArrayBuffer(44 + pcm.length);
+            const view = new DataView(wav);
+            const writeStr = (off, s) => { for(let i=0; i<s.length; i++) view.setUint8(off+i, s.charCodeAt(i)); };
+            writeStr(0, 'RIFF'); view.setUint32(4, 36 + pcm.length, true); writeStr(8, 'WAVE');
+            writeStr(12, 'fmt '); view.setUint32(16, 16, true); view.setUint16(20, 1, true);
+            view.setUint16(22, 1, true); view.setUint32(24, sampleRate, true);
+            view.setUint32(28, sampleRate * 2, true); view.setUint16(32, 2, true);
+            view.setUint16(34, 16, true); writeStr(36, 'data'); view.setUint32(40, pcm.length, true);
+            new Uint8Array(wav, 44).set(pcm);
+            return new Blob([wav], { type: 'audio/wav' });
+        }
+
+        // --- UI Logic ---
         async function handleSend(isAuto = false) {
             const val = isAuto ? "" : userInput.value.trim();
             if(!isAuto && !val) return;
             if(!isAuto) addMessage(val, 'user');
             userInput.value = '';
             sendBtn.disabled = true;
-            
-            const typing = addMessage('<div class="flex gap-1 py-1"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div>', 'lila');
-
+            const typing = addMessage('<div class="typing-dot"></div><div class="typing-dot" style="animation-delay:0.2s"></div>', 'lila');
             try {
                 const ai = await fetchAI(isAuto ? true : val);
                 typing.remove();
-                
                 changeEmotion(ai.emotion);
                 addMessage(ai.text, 'lila', ai.english);
-                
                 if (isLearningMode && !isAuto) {
                     learningTurnCount++;
-                    if (learningTurnCount > MAX_TURNS) {
-                        isLearningMode = false;
-                        learningTurnCount = 0;
-                    }
+                    if (learningTurnCount > MAX_TURNS) { isLearningMode = false; learningTurnCount = 0; }
                     updateModeUI();
                 }
             } catch (e) {
                 typing.remove();
-                addMessage(`<span class="text-red-500 font-bold">${e.message}</span>`, "lila");
-                changeEmotion('sad');
+                addMessage(`<span class="text-red-500">${e.message}</span>`, "lila");
                 if (isLearningMode) { isLearningMode = false; updateModeUI(); }
-            } finally {
-                sendBtn.disabled = false;
-            }
+            } finally { sendBtn.disabled = false; }
         }
 
         function changeEmotion(emo) {
             const valid = ["angry", "surprised", "sad", "big_smile", "base_smile", "neutral", "wink", "skeptical", "scared"];
             const target = valid.includes(emo) ? emo : 'base_smile';
-            lilaAvatar.style.transform = 'scale(0.9)';
-            setTimeout(() => {
-                lilaAvatar.src = `lila_${target}.png`;
-                lilaAvatar.style.transform = 'scale(1)';
-            }, 150);
-        }
-
-        function saveApiKey() {
-            const key = apiKeyInput.value.trim();
-            if (key) {
-                localStorage.setItem('lila_api_key', key);
-                userKey = key;
-                onlineDot.classList.replace('bg-gray-300', 'bg-green-500');
-                debugInfo.innerHTML += `<br>Status: Key updated.`;
-                togglePanel('settings-panel');
-                addMessage("新しい鍵をセットしたよ！お話しできるようになったよ❤️", "lila");
-            }
+            lilaAvatar.src = `lila_${target}.png`;
         }
 
         function addMessage(html, sender, english = null) {
             const wrap = document.createElement('div');
             wrap.className = `flex ${sender === 'user' ? 'justify-end' : 'justify-start'} mb-4 fade-in`;
             const bub = document.createElement('div');
-            bub.className = sender === 'user' ? 'bubble-user p-4 max-w-[85%] text-sm font-medium' : 'bubble-lila p-4 max-w-[85%] text-sm leading-relaxed relative shadow-sm';
+            bub.className = sender === 'user' ? 'bubble-user p-4 max-w-[85%] text-sm font-medium' : 'bubble-lila p-4 max-w-[85%] text-sm relative shadow-sm';
             bub.innerHTML = html;
-            
-            if (sender === 'lila' && english) {
-                const btn = document.createElement('div');
-                btn.className = "save-btn"; btn.innerHTML = "＋";
-                btn.onclick = () => saveWord(english);
-                bub.appendChild(btn);
+            if (sender === 'lila') {
+                if (english) {
+                    const btn = document.createElement('div'); btn.className = "save-btn"; btn.innerHTML = "＋";
+                    btn.onclick = () => saveWord(english); bub.appendChild(btn);
+                }
+                const speakBtn = document.createElement('div'); speakBtn.className = "tts-btn"; speakBtn.innerHTML = "📣";
+                speakBtn.onclick = () => playTTS(bub.innerText.replace('＋📣', '')); bub.appendChild(speakBtn);
             }
-            
             wrap.appendChild(bub);
             chatLog.appendChild(wrap);
             chatLog.scrollTop = chatLog.scrollHeight;
@@ -308,25 +358,19 @@
                 savedWords.push(w);
                 localStorage.setItem('lila_words', JSON.stringify(savedWords));
                 renderWordBank();
-                const t = document.createElement('div');
-                t.className = "fixed bottom-24 left-1/2 -translate-x-1/2 bg-teal-800 text-white px-6 py-3 rounded-full text-xs font-bold z-[200] shadow-xl";
-                t.innerText = `"${w}" を保存したよ！📓`;
-                document.body.appendChild(t);
-                setTimeout(() => t.remove(), 2000);
+                const t = document.createElement('div'); t.className = "fixed bottom-24 left-1/2 -translate-x-1/2 bg-teal-800 text-white px-6 py-3 rounded-full text-xs font-bold shadow-xl";
+                t.innerText = `"${w}" を保存！📓`; document.body.appendChild(t); setTimeout(() => t.remove(), 2000);
             }
         }
 
         function renderWordBank() {
             const list = document.getElementById('word-list');
-            if (savedWords.length === 0) {
-                list.innerHTML = '<p class="text-center text-gray-400 text-sm mt-20">まだ空っぽだよ。＋ボタンで保存してね！</p>';
-                return;
-            }
-            list.innerHTML = savedWords.map(w => `
-                <div class="bg-teal-50 p-4 rounded-2xl border border-teal-100 flex justify-between items-center">
-                    <p class="text-sm font-bold text-teal-800">${w}</p>
-                </div>
-            `).join('');
+            list.innerHTML = savedWords.length ? savedWords.map(w => `<div class="bg-teal-50 p-4 rounded-2xl border border-teal-100 font-bold text-teal-800 text-sm mb-2">${w}</div>`).join('') : '<p class="text-center text-gray-400 text-sm mt-10">空っぽだよ</p>';
+        }
+
+        function saveApiKey() {
+            const key = apiKeyInput.value.trim();
+            if (key) { localStorage.setItem('lila_api_key', key); userKey = key; onlineDot.className = onlineDot.className.replace('bg-gray-300', 'bg-green-500'); togglePanel('settings-panel'); addMessage("鍵をセットしたよ！❤️", "lila"); }
         }
 
         function togglePanel(id) { document.getElementById(id).classList.toggle('panel-open'); }
