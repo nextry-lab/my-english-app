@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Lila AI Buddy v4.0.5 ✨</title>
+    <title>Lila AI Buddy v4.0.6 ✨</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&family=Noto+Sans+JP:wght@400;700&display=swap');
@@ -55,6 +55,17 @@
         }
         .fade-in { animation: fadeIn 0.3s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* 🌟 カウントダウン用スタイル */
+        .cooldown-info {
+            font-size: 10px;
+            color: #ef4444;
+            margin-top: 5px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
     </style>
 </head>
 <body>
@@ -77,7 +88,7 @@
                     Connect & Save 🔐
                 </button>
                 <div id="debug-info" class="p-4 bg-gray-50 rounded-2xl text-[10px] text-gray-400 font-mono overflow-auto max-h-48 border border-gray-100">
-                    Version: 4.0.5 (Rate Limit Optimized)<br>
+                    Version: 4.0.6 (Visual Cooldown)<br>
                     Status: Ready.
                 </div>
             </div>
@@ -126,7 +137,7 @@
                 <div id="online-dot" class="absolute bottom-1 right-1 w-5 h-5 bg-gray-300 border-4 border-white rounded-full shadow-sm"></div>
             </div>
             <h1 class="mt-3 text-xl font-black text-teal-800 tracking-tighter">Lila AI Buddy</h1>
-            <div class="text-[9px] text-teal-600 font-bold tracking-widest mt-1 uppercase bg-teal-50 px-2 py-0.5 rounded-full border border-teal-100" id="mode-badge">AI Buddy v4.0.5</div>
+            <div class="text-[9px] text-teal-600 font-bold tracking-widest mt-1 uppercase bg-teal-50 px-2 py-0.5 rounded-full border border-teal-100" id="mode-badge">AI Buddy v4.0.6</div>
         </div>
 
         <!-- Mini Lesson & Tools Control -->
@@ -178,7 +189,7 @@
             if (userKey) {
                 apiKeyInput.value = userKey;
                 onlineDot.classList.replace('bg-gray-300', 'bg-green-500');
-                addMessage("Ready for chat! / お話しする準備はできてるよ！もし私が止まったら少しだけ待ってね❤️", "lila");
+                addMessage("I updated the wait system! / 待ち時間のシステムを改善したよ。もし私が止まっても、あと何秒でお喋りできるか表示するね❤️", "lila");
             }
         };
 
@@ -197,7 +208,7 @@
                 btnText.innerText = `ミニレッスン`;
                 btnIcon.innerText = "✏️";
                 btn.className = "flex-1 px-4 py-2 bg-blue-50 text-blue-600 font-bold text-xs rounded-full border border-blue-200 shadow-sm flex items-center justify-center gap-2";
-                modeBadge.innerText = "AI Buddy v4.0.5";
+                modeBadge.innerText = "AI Buddy v4.0.6";
             }
         }
 
@@ -226,7 +237,7 @@
                     ? "【Roleplay】Start a simple English conversation. Explain in Japanese, then talk in English."
                     : `【Story】Make a short story using: ${savedWords.join(', ')}. Write in English first, then Japanese translation.`;
                 
-                const ai = await fetchAI(prompt);
+                const ai = await fetchAI(prompt, typing);
                 typing.remove();
                 addMessage(ai.text, 'lila', ai.english);
             } catch (e) {
@@ -237,7 +248,7 @@
             }
         }
 
-        async function callGemini(payload) {
+        async function callGemini(payload, typingBubble = null) {
             const apiKey = userKey.trim();
             if (!activeModelPath) {
                 const versions = ["v1beta", "v1"];
@@ -257,22 +268,34 @@
             }
             const url = `https://generativelanguage.googleapis.com/${activeModelPath}:generateContent?key=${apiKey}`;
             
-            // 🌟 429(Rate Limit)対策：リトライ回数と待機時間を強化
-            const delays = [3000, 6000, 12000, 24000, 48000];
+            const delays = [5000, 10000, 20000, 30000];
             for (let i = 0; i <= delays.length; i++) {
                 try {
                     const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                     
                     if (response.status === 429 || response.status === 503) {
                         if (i < delays.length) {
-                            debugInfo.innerHTML += `<br>⚠️ Busy... retrying in ${delays[i]/1000}s`;
-                            await new Promise(res => setTimeout(res, delays[i]));
+                            const waitMs = delays[i];
+                            const waitSec = waitMs / 1000;
+                            debugInfo.innerHTML += `<br>⚠️ Rate limit. Waiting ${waitSec}s...`;
+                            
+                            // 🌟 タイピングバブルにカウントダウンを表示
+                            if (typingBubble) {
+                                const cooldownBox = document.createElement('div');
+                                cooldownBox.className = "cooldown-info";
+                                typingBubble.querySelector('.bubble-lila').appendChild(cooldownBox);
+                                
+                                for (let s = waitSec; s > 0; s--) {
+                                    cooldownBox.innerHTML = `⏳ Google is resting... ${s}s`;
+                                    await new Promise(res => setTimeout(res, 1000));
+                                }
+                                cooldownBox.remove();
+                            } else {
+                                await new Promise(res => setTimeout(res, waitMs));
+                            }
                             continue; 
                         }
-                        const errorMsg = response.status === 429 
-                            ? "I'm talking too fast! Please wait about 30 seconds. / ちょっとお喋りしすぎちゃった！30秒くらい待ってからまた送ってね❤️" 
-                            : "Server is busy. Try again later. / Googleのサーバーが混んでるみたい。少し時間をあけてね。";
-                        throw new Error(errorMsg);
+                        throw new Error("Sorry, I need a long break. Please wait 1 minute! / ごめんね、Googleが少し疲れたみたい。1分くらいお休みしてからまたお話ししよう❤️");
                     }
 
                     if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -287,7 +310,7 @@
             }
         }
 
-        async function fetchAI(msg) {
+        async function fetchAI(msg, typingBubble = null) {
             const modePrompt = isLearningMode ? 
                 `【英語ミニレッスンモード】全3問の${learningTurnCount}問目です。簡単な英語の問題を出して。必ず「英語の文章」のあとに「日本語の訳」を添えて。` : 
                 `【通常モード】日本語と英語の両方で楽しくおしゃべりして。必ず「まず英語で話し、その次に日本語の訳を添える（例: Hello! / こんにちは！）」という形式を守って。`;
@@ -295,7 +318,7 @@
             const payload = {
                 contents: [{ parts: [{ text: `あなたはリーラです。${modePrompt}\n必ずこのJSON形式で：{"emotion":"表情名","text":"英語の返信文 / 日本語の返信文","english":"復習用に保存すべき英語フレーズ"}\n\nユーザー：${msg === true ? "レッスン開始！" : msg}` }] }]
             };
-            const result = await callGemini(payload);
+            const result = await callGemini(payload, typingBubble);
             const text = result.candidates[0].content.parts[0].text;
             const jsonMatch = text.match(/\{[\s\S]*\}/);
             return JSON.parse(jsonMatch[0]);
@@ -318,7 +341,7 @@
             sendBtn.disabled = true;
             const typing = addMessage('<div class="typing-dot"></div><div class="typing-dot" style="animation-delay:0.2s"></div><div class="typing-dot" style="animation-delay:0.4s"></div>', 'lila');
             try {
-                const ai = await fetchAI(isAuto ? true : val);
+                const ai = await fetchAI(isAuto ? true : val, typing);
                 typing.remove();
                 lilaAvatar.src = `lila_${ai.emotion || 'base_smile'}.png`;
                 addMessage(ai.text, 'lila', ai.english);
