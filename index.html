@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Lila AI Buddy v4.0.3 ✨</title>
+    <title>Lila AI Buddy v4.0.5 ✨</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&family=Noto+Sans+JP:wght@400;700&display=swap');
@@ -38,8 +38,9 @@
         }
         .panel-open { right: 0 !important; }
         .typing-dot {
-            width: 5px; height: 5px; background: #2dd4bf; border-radius: 50%;
+            width: 6px; height: 6px; background: #2dd4bf; border-radius: 50%;
             display: inline-block; animation: typing 1.4s infinite ease-in-out both;
+            margin-right: 3px;
         }
         @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1.0); } }
         .save-btn {
@@ -76,7 +77,7 @@
                     Connect & Save 🔐
                 </button>
                 <div id="debug-info" class="p-4 bg-gray-50 rounded-2xl text-[10px] text-gray-400 font-mono overflow-auto max-h-48 border border-gray-100">
-                    Version: 4.0.3 (Bilingual Logic)<br>
+                    Version: 4.0.5 (Rate Limit Optimized)<br>
                     Status: Ready.
                 </div>
             </div>
@@ -125,7 +126,7 @@
                 <div id="online-dot" class="absolute bottom-1 right-1 w-5 h-5 bg-gray-300 border-4 border-white rounded-full shadow-sm"></div>
             </div>
             <h1 class="mt-3 text-xl font-black text-teal-800 tracking-tighter">Lila AI Buddy</h1>
-            <div class="text-[9px] text-teal-600 font-bold tracking-widest mt-1 uppercase bg-teal-50 px-2 py-0.5 rounded-full border border-teal-100" id="mode-badge">AI Buddy v4.0.3</div>
+            <div class="text-[9px] text-teal-600 font-bold tracking-widest mt-1 uppercase bg-teal-50 px-2 py-0.5 rounded-full border border-teal-100" id="mode-badge">AI Buddy v4.0.5</div>
         </div>
 
         <!-- Mini Lesson & Tools Control -->
@@ -177,7 +178,7 @@
             if (userKey) {
                 apiKeyInput.value = userKey;
                 onlineDot.classList.replace('bg-gray-300', 'bg-green-500');
-                addMessage("I updated the bilingual mode! / バイリンガルモードを更新したよ！英語と日本語の両方で話すね❤️", "lila");
+                addMessage("Ready for chat! / お話しする準備はできてるよ！もし私が止まったら少しだけ待ってね❤️", "lila");
             }
         };
 
@@ -196,7 +197,7 @@
                 btnText.innerText = `ミニレッスン`;
                 btnIcon.innerText = "✏️";
                 btn.className = "flex-1 px-4 py-2 bg-blue-50 text-blue-600 font-bold text-xs rounded-full border border-blue-200 shadow-sm flex items-center justify-center gap-2";
-                modeBadge.innerText = "AI Buddy v4.0.3";
+                modeBadge.innerText = "AI Buddy v4.0.5";
             }
         }
 
@@ -219,7 +220,7 @@
             if (!userKey) { addMessage("Set key first! / 先に鍵を教えてね！", "lila"); return; }
             togglePanel('ai-tools-panel');
             sendBtn.disabled = true;
-            const typing = addMessage('<div class="typing-dot"></div>', 'lila');
+            const typing = addMessage('<div class="typing-dot"></div><div class="typing-dot" style="animation-delay:0.2s"></div><div class="typing-dot" style="animation-delay:0.4s"></div>', 'lila');
             try {
                 const prompt = type === 'roleplay' 
                     ? "【Roleplay】Start a simple English conversation. Explain in Japanese, then talk in English."
@@ -255,21 +256,38 @@
                 if (!found) throw new Error("Model not found.");
             }
             const url = `https://generativelanguage.googleapis.com/${activeModelPath}:generateContent?key=${apiKey}`;
-            const delays = [2000, 4000, 8000];
+            
+            // 🌟 429(Rate Limit)対策：リトライ回数と待機時間を強化
+            const delays = [3000, 6000, 12000, 24000, 48000];
             for (let i = 0; i <= delays.length; i++) {
                 try {
                     const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                    if (response.status === 503 || response.status === 429) {
-                        if (i < delays.length) { await new Promise(res => setTimeout(res, delays[i])); continue; }
+                    
+                    if (response.status === 429 || response.status === 503) {
+                        if (i < delays.length) {
+                            debugInfo.innerHTML += `<br>⚠️ Busy... retrying in ${delays[i]/1000}s`;
+                            await new Promise(res => setTimeout(res, delays[i]));
+                            continue; 
+                        }
+                        const errorMsg = response.status === 429 
+                            ? "I'm talking too fast! Please wait about 30 seconds. / ちょっとお喋りしすぎちゃった！30秒くらい待ってからまた送ってね❤️" 
+                            : "Server is busy. Try again later. / Googleのサーバーが混んでるみたい。少し時間をあけてね。";
+                        throw new Error(errorMsg);
                     }
+
                     if (!response.ok) throw new Error(`HTTP ${response.status}`);
                     return await response.json();
-                } catch (e) { if (i === delays.length) throw e; }
+                } catch (e) {
+                    if (i === delays.length) throw e;
+                    if (!e.message.includes("429") && !e.message.includes("503")) {
+                        await new Promise(res => setTimeout(res, 2000));
+                        continue;
+                    }
+                }
             }
         }
 
         async function fetchAI(msg) {
-            // 🌟 修正ポイント：英語と日本語の両方で返答させる指示を強化
             const modePrompt = isLearningMode ? 
                 `【英語ミニレッスンモード】全3問の${learningTurnCount}問目です。簡単な英語の問題を出して。必ず「英語の文章」のあとに「日本語の訳」を添えて。` : 
                 `【通常モード】日本語と英語の両方で楽しくおしゃべりして。必ず「まず英語で話し、その次に日本語の訳を添える（例: Hello! / こんにちは！）」という形式を守って。`;
@@ -284,7 +302,6 @@
         }
 
         function playTTS(text) {
-            // 日本語訳( / 以降)を読み上げないようにして、英語学習に集中させる
             const englishPart = text.split('/')[0] || text;
             let clean = englishPart.replace(/<[^>]*>?/gm, '').replace(/\p{Extended_Pictographic}/gu, '').trim();
             if (!clean) return;
@@ -299,7 +316,7 @@
             if(!isAuto) addMessage(val, 'user');
             userInput.value = '';
             sendBtn.disabled = true;
-            const typing = addMessage('<div class="typing-dot"></div><div class="typing-dot" style="animation-delay:0.2s"></div>', 'lila');
+            const typing = addMessage('<div class="typing-dot"></div><div class="typing-dot" style="animation-delay:0.2s"></div><div class="typing-dot" style="animation-delay:0.4s"></div>', 'lila');
             try {
                 const ai = await fetchAI(isAuto ? true : val);
                 typing.remove();
@@ -328,9 +345,8 @@
             const bub = document.createElement('div');
             bub.className = sender === 'user' ? 'bubble-user p-4 max-w-[85%] text-sm' : 'bubble-lila p-4 max-w-[85%] text-sm relative shadow-sm';
             
-            // 🌟 英語と日本語の表示スタイルを調整
             let displayHtml = html;
-            if (sender === 'lila' && html.includes('/')) {
+            if (sender === 'lila' && html.includes('/') && !html.includes('<div')) {
                 const parts = html.split('/');
                 displayHtml = `<div class="font-bold mb-1 leading-tight">${parts[0].trim()}</div><div class="text-[11px] text-gray-500 border-t border-gray-100 mt-2 pt-2">${parts[1].trim()}</div>`;
             }
