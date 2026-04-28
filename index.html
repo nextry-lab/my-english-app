@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Lila AI Buddy v3.5</title>
+    <title>Lila AI Buddy v3.6</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&family=Noto+Sans+JP:wght@400;700&display=swap');
@@ -69,8 +69,8 @@
                     Connect 🔐
                 </button>
                 <div id="debug-info" class="p-4 bg-gray-50 rounded-2xl text-[9px] text-gray-400 font-mono overflow-auto max-h-32">
-                    Version: 3.5 (Mini Lesson)<br>
-                    Ready.
+                    Version: 3.6 (Stable Flash Forced)<br>
+                    Quota optimized.
                 </div>
             </div>
         </div>
@@ -81,13 +81,11 @@
                 <h2 class="text-2xl font-black text-teal-800">Word Bank 📓</h2>
                 <button onclick="togglePanel('word-bank-panel')" class="text-gray-400 p-2">✕</button>
             </div>
-            <div id="word-list" class="flex-1 overflow-y-auto space-y-4">
-                <p class="text-center text-gray-400 text-sm mt-20">まだ空っぽだよ。＋ボタンで保存してね！</p>
-            </div>
+            <div id="word-list" class="flex-1 overflow-y-auto space-y-4"></div>
         </div>
 
         <!-- Top Header -->
-        <div class="p-6 flex flex-col items-center relative">
+        <div class="p-6 flex flex-col items-center relative border-b border-teal-100/50">
             <button onclick="togglePanel('settings-panel')" class="absolute top-6 left-6 text-gray-300">⚙️</button>
             <div class="absolute top-6 right-6">
                 <button onclick="togglePanel('word-bank-panel')" class="flex items-center gap-1 text-[11px] font-black text-teal-600 bg-teal-50 px-3 py-1.5 rounded-full border border-teal-100">
@@ -100,21 +98,19 @@
                 <div id="online-dot" class="absolute bottom-2 right-2 w-5 h-5 bg-gray-300 border-4 border-white rounded-full shadow-sm"></div>
             </div>
             <h1 class="mt-3 text-2xl font-black text-teal-800 tracking-tighter">Lila AI</h1>
-            <div class="text-[9px] text-teal-600 font-bold tracking-widest mt-1 uppercase bg-teal-50 px-2 py-0.5 rounded-full border border-teal-100" id="mode-badge">Standard Mode v3.5</div>
+            <div class="text-[9px] text-teal-600 font-bold tracking-widest mt-1 uppercase bg-teal-50 px-2 py-0.5 rounded-full border border-teal-100" id="mode-badge">Standard Mode v3.6</div>
         </div>
 
-        <!-- Mode Switcher (Mini Lesson Button) -->
-        <div class="px-6 py-2 bg-white/80 backdrop-blur-md border-y border-gray-100 flex justify-center relative z-10 shadow-sm">
+        <!-- Mode Switcher -->
+        <div class="px-6 py-2 bg-white/80 backdrop-blur-md border-y border-gray-100 flex justify-center relative z-10">
             <button id="learning-btn" onclick="toggleLearningMode()" class="px-5 py-2 bg-blue-50 text-blue-600 font-bold text-xs rounded-full border border-blue-200 shadow-sm flex items-center gap-2 transition-all active:scale-95">
                 <span id="learning-btn-icon">✏️</span> 
                 <span id="learning-btn-text">ミニレッスンを始める</span>
             </button>
         </div>
 
-        <!-- Chat Log -->
         <div id="chat-log" class="chat-container space-y-5"></div>
 
-        <!-- Bottom Input -->
         <div class="p-5 bg-white/80 border-t border-gray-100 pb-safe">
             <div class="flex items-center gap-3 bg-gray-50 p-2 rounded-3xl border border-gray-100 focus-within:ring-2 focus-within:ring-teal-500/20">
                 <input type="text" id="user-input" placeholder="Lilaに話しかけてみて... ❤️" 
@@ -126,9 +122,6 @@
     </div>
 
     <script>
-        // 👇【重要】ここにコウスケの鍵（AIza...）を半角の " " の中に入れてね！
-        const apiKey = "ここにコウスケの鍵を入れる"; 
-
         const chatLog = document.getElementById('chat-log');
         const userInput = document.getElementById('user-input');
         const lilaAvatar = document.getElementById('lila-avatar');
@@ -138,218 +131,124 @@
         const debugInfo = document.getElementById('debug-info');
         const modeBadge = document.getElementById('mode-badge');
 
-        let userKey = localStorage.getItem('lila_api_key') || apiKey;
+        let userKey = localStorage.getItem('lila_api_key') || "";
         let savedWords = JSON.parse(localStorage.getItem('lila_words') || "[]");
         
-        // 学習モードのステータス管理
         let isLearningMode = false;
         let learningTurnCount = 0;
-        const MAX_TURNS = 3; // 3問やったら終了！
+        const MAX_TURNS = 3;
 
         window.onload = () => {
             renderWordBank();
             updateModeUI();
-            
-            if (userKey && userKey !== "ここにコウスケの鍵を入れる") {
+            if (userKey) {
                 apiKeyInput.value = userKey;
                 onlineDot.classList.replace('bg-gray-300', 'bg-green-500');
-                addMessage("コウスケ！初心者向けの「ミニレッスン機能」を追加したよ！チャット欄の上の ✏️ ボタンを押してみてね❤️", "lila");
-            } else {
-                addMessage("コウスケ、コードの中か左上の⚙️マークから鍵を入れてね！", "lila");
+                addMessage("コウスケ！制限に強い「安定モデル」に切り替えたよ！もしまた止まったら、1分だけ待ってみてね❤️", "lila");
             }
         };
 
-        // UI（ボタンとバッジ）の切り替え
         function updateModeUI() {
             const btnText = document.getElementById('learning-btn-text');
             const btnIcon = document.getElementById('learning-btn-icon');
             const btn = document.getElementById('learning-btn');
-
             if (isLearningMode) {
                 btnText.innerText = `レッスンをやめる (${learningTurnCount}/${MAX_TURNS})`;
                 btnIcon.innerText = "🛑";
-                btn.className = "px-5 py-2 bg-orange-50 text-orange-600 font-bold text-xs rounded-full border border-orange-200 shadow-sm flex items-center gap-2 transition-all active:scale-95";
+                btn.className = "px-5 py-2 bg-orange-50 text-orange-600 font-bold text-xs rounded-full border border-orange-200 shadow-sm flex items-center gap-2";
                 modeBadge.innerText = "Study Mode ✏️";
-                modeBadge.className = "text-[9px] text-orange-600 font-bold tracking-widest mt-1 uppercase bg-orange-50 px-2 py-0.5 rounded-full border border-orange-100";
             } else {
                 btnText.innerText = `ミニレッスンを始める`;
                 btnIcon.innerText = "✏️";
-                btn.className = "px-5 py-2 bg-blue-50 text-blue-600 font-bold text-xs rounded-full border border-blue-200 shadow-sm flex items-center gap-2 transition-all active:scale-95";
-                modeBadge.innerText = "Standard Mode v3.5";
-                modeBadge.className = "text-[9px] text-teal-600 font-bold tracking-widest mt-1 uppercase bg-teal-50 px-2 py-0.5 rounded-full border border-teal-100";
+                btn.className = "px-5 py-2 bg-blue-50 text-blue-600 font-bold text-xs rounded-full border border-blue-200 shadow-sm flex items-center gap-2";
+                modeBadge.innerText = "Standard Mode v3.6";
             }
         }
 
-        // レッスンの開始・終了ボタンが押された時
         async function toggleLearningMode() {
             if (isLearningMode) {
-                // 途中でやめる場合
                 isLearningMode = false;
                 learningTurnCount = 0;
                 updateModeUI();
-                addMessage("レッスンを中断したよ！またいつでも声かけてね❤️", "lila");
-                changeEmotion('base_smile');
+                addMessage("またいつでもレッスンしようね❤️", "lila");
             } else {
-                // レッスンを開始する場合
                 isLearningMode = true;
                 learningTurnCount = 1;
                 updateModeUI();
-                
-                sendBtn.disabled = true;
-                const typing = addMessage('<div class="flex gap-1 py-1"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div>', 'lila');
-
-                try {
-                    const ai = await fetchAI("[START_LESSON]"); // AIに開始の合図を送る
-                    typing.remove();
-                    changeEmotion(ai.emotion);
-                    addMessage(ai.text, 'lila', ai.english);
-                } catch (e) {
-                    typing.remove();
-                    isLearningMode = false;
-                    learningTurnCount = 0;
-                    updateModeUI();
-                    addMessage(`エラーが起きちゃった😢<br><span class="text-[10px] text-red-500 font-mono">${e.message}</span>`, "lila");
-                    changeEmotion('sad');
-                } finally {
-                    sendBtn.disabled = false;
-                }
+                await handleSend(true);
             }
         }
 
         async function fetchAI(msg) {
-            if (!userKey || userKey === "" || userKey === "ここにコウスケの鍵を入れる") {
-                throw new Error("鍵(APIキー)が設定されていないみたい！");
-            }
+            if (!userKey) throw new Error("APIキーを設定してね！");
+            
+            // 🌟 Quota（制限）が最も緩い「Gemini 1.5 Flash 安定版」を強制指定
+            const model = "gemini-1.5-flash";
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${userKey}`;
 
-            let targetModel = "";
+            let instruction = isLearningMode ? 
+                (learningTurnCount === 1 ? "英語初心者向けミニレッスンを開始。簡単な英語の質問を1つ出し、日本語でヒントを添えて。" : 
+                 learningTurnCount <= MAX_TURNS ? "レッスン継続。回答を褒めて添削し、次の質問を出す。" : "レッスン終了。褒めて締める。") :
+                "通常モード。日本語で話し、役立つ英語フレーズを1つ提案。";
 
-            try {
-                const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${userKey}`;
-                const listRes = await fetch(listUrl);
-                if (!listRes.ok) throw new Error("モデル探しでブロック");
-                const listData = await listRes.json();
-                const availableModels = listData.models.filter(m => m.supportedGenerationMethods && m.supportedGenerationMethods.includes("generateContent") && m.name.includes("gemini"));
-                if (availableModels.length === 0) throw new Error("使えるモデルが見つからなかったよ😢");
-                const flashModel = availableModels.find(m => m.name.includes("flash"));
-                targetModel = flashModel ? flashModel.name : availableModels[0].name;
-            } catch (error) {
-                throw new Error(`エラー: ${error.message}`);
-            }
+            const payload = {
+                contents: [{ parts: [{ text: `あなたはリーラです。${instruction}\n\n必ずこのJSON形式で：{"emotion":"表情","text":"返信","english":"英語フレーズ"}\n\nユーザー：${msg === true ? "レッスン開始！" : msg}` }] }]
+            };
 
-            const url = `https://generativelanguage.googleapis.com/v1beta/${targetModel}:generateContent?key=${userKey}`;
-
-            // 🌟 モードとターン数に合わせてAIへの指示を細かく変える！
-            let currentContext = "";
-            let userMessage = msg;
-
-            if (isLearningMode) {
-                if (msg === "[START_LESSON]") {
-                    currentContext = `【システム指示】今から英語初心者向けのミニレッスン（全${MAX_TURNS}問）を開始します。「英語のレッスンを始めよう！」と明るく誘い、コウスケに「とても簡単な英語の質問」を1つだけ出してください。日本語で意味やヒントも優しく添えてあげてください。`;
-                    userMessage = "レッスンを始めて！";
-                } else if (learningTurnCount < MAX_TURNS) {
-                    currentContext = `【システム指示】英語のミニレッスン中です（現在${learningTurnCount}問目）。コウスケの返答を受け止め、優しく褒めたり簡単な添削をしてから、「次の簡単な英語の質問」を1つだけ出してください。日本語のサポートも添えてください。`;
-                } else if (learningTurnCount === MAX_TURNS) {
-                    currentContext = `【システム指示】英語のミニレッスンの最終回（${MAX_TURNS}問目）の回答が来ました。コウスケの返答を褒めて添削した後、「今日のレッスンはお疲れ様！また通常モードでお話ししようね」と日本語で伝えてレッスンを締めくくってください。新たな質問は絶対に出さないでください。`;
-                }
-            } else {
-                currentContext = "【システム指示】現在は「通常モード」です。日本語で親しみやすく会話しながら、会話の文脈に関連する役立つ短い英語フレーズを1つだけ提案してください。コウスケに質問攻めにはしないでください。";
-            }
-
-            const promptText = `あなたは英語学習パートナーの「リーラ」です。性格は明るく、ユーザーの「コウスケ」が大好きです。
-必ず以下のJSON形式のみで返答してください。余計な文章は一切含めないでください。
-{"emotion": "angry, surprised, sad, big_smile, base_smile, neutral, wink, skeptical, scared のいずれか", "text": "返信文", "english": "役立つ英語フレーズ(必須)"}
-
-${currentContext}
-
-ユーザーの言葉：${userMessage}`;
-
-            const payload = { contents: [{ parts: [{ text: promptText }] }] };
             const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-
-            if (!response.ok) {
-                const errorDetails = await response.json();
-                throw new Error(`APIエラー: ${errorDetails.error?.message || response.status}`);
+            
+            if (response.status === 429) {
+                throw new Error("Googleが制限中だよ。1分待ってから送ってね！☕️");
             }
+            if (!response.ok) throw new Error("通信エラーが発生したよ");
 
             const result = await response.json();
-            const jsonMatch = result.candidates[0].content.parts[0].text.match(/\{[\s\S]*\}/);
-            if (!jsonMatch) throw new Error("JSON形式の抽出に失敗しました");
-            return JSON.parse(jsonMatch[0]);
+            const jsonStr = result.candidates[0].content.parts[0].text.match(/\{.*\}/s)[0];
+            return JSON.parse(jsonStr);
         }
 
-        async function handleSend() {
-            const val = userInput.value.trim();
-            if(!val || sendBtn.disabled) return;
-
-            addMessage(val, 'user');
+        async function handleSend(isAuto = false) {
+            const val = isAuto ? "" : userInput.value.trim();
+            if(!isAuto && !val) return;
+            if(!isAuto) addMessage(val, 'user');
             userInput.value = '';
             sendBtn.disabled = true;
-
-            const typing = addMessage('<div class="flex gap-1 py-1"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div>', 'lila');
+            const typing = addMessage('<div class="typing-dot"></div><div class="typing-dot" style="animation-delay:0.2s"></div><div class="typing-dot" style="animation-delay:0.4s"></div>', 'lila');
 
             try {
-                const ai = await fetchAI(val);
+                const ai = await fetchAI(isAuto ? true : val);
                 typing.remove();
-                
-                const valid = ["angry", "surprised", "sad", "big_smile", "base_smile", "neutral", "wink", "skeptical", "scared"];
-                changeEmotion(valid.includes(ai.emotion) ? ai.emotion : 'base_smile');
-
+                lilaAvatar.src = `lila_${ai.emotion || 'base_smile'}.png`;
                 addMessage(ai.text, 'lila', ai.english);
-                
-                // 🌟 レッスン中なら問題数をカウントアップして、終わったら自動で戻す！
-                if (isLearningMode) {
+                if (isLearningMode && !isAuto) {
                     learningTurnCount++;
-                    if (learningTurnCount > MAX_TURNS) {
-                        isLearningMode = false;
-                        learningTurnCount = 0;
-                    }
+                    if (learningTurnCount > MAX_TURNS) { isLearningMode = false; learningTurnCount = 0; }
                     updateModeUI();
                 }
-
             } catch (e) {
                 typing.remove();
-                debugInfo.innerText = `Error: ${e.message}`;
-                addMessage(`通信エラー😢<br><span class="text-[10px] text-red-500 font-mono">原因: ${e.message}</span>`, "lila");
-                changeEmotion('sad');
-            } finally {
-                sendBtn.disabled = false;
-            }
-        }
-
-        function changeEmotion(emo) {
-            lilaAvatar.style.transform = 'scale(0.9)';
-            setTimeout(() => {
-                lilaAvatar.src = `lila_${emo}.png`;
-                lilaAvatar.style.transform = 'scale(1)';
-            }, 150);
+                addMessage(e.message, "lila");
+                if (isLearningMode) { isLearningMode = false; updateModeUI(); }
+            } finally { sendBtn.disabled = false; }
         }
 
         function saveApiKey() {
             const key = apiKeyInput.value.trim();
-            if (key) {
-                localStorage.setItem('lila_api_key', key);
-                userKey = key;
-                onlineDot.classList.replace('bg-gray-300', 'bg-green-500');
-                debugInfo.innerText = "Status: Key saved & applied!";
-                togglePanel('settings-panel');
-                addMessage("鍵をセットしたよ！コウスケ、話しかけてみて！❤️", "lila");
-            }
+            if (key) { localStorage.setItem('lila_api_key', key); userKey = key; onlineDot.classList.replace('bg-gray-300', 'bg-green-500'); togglePanel('settings-panel'); addMessage("鍵をセットしたよ！", "lila"); }
         }
 
         function addMessage(html, sender, english = null) {
             const wrap = document.createElement('div');
-            wrap.className = `flex ${sender === 'user' ? 'justify-end' : 'justify-start'} mb-4 fade-in`;
+            wrap.className = `flex ${sender === 'user' ? 'justify-end' : 'justify-start'} mb-4`;
             const bub = document.createElement('div');
-            bub.className = sender === 'user' ? 'bubble-user p-4 max-w-[85%] text-sm font-medium' : 'bubble-lila p-4 max-w-[85%] text-sm leading-relaxed';
+            bub.className = sender === 'user' ? 'bubble-user p-4 max-w-[85%] text-sm' : 'bubble-lila p-4 max-w-[85%] text-sm relative';
             bub.innerHTML = html;
-            
             if (sender === 'lila' && english) {
                 const btn = document.createElement('div');
                 btn.className = "save-btn"; btn.innerHTML = "＋";
                 btn.onclick = () => saveWord(english);
                 bub.appendChild(btn);
             }
-            
             wrap.appendChild(bub);
             chatLog.appendChild(wrap);
             chatLog.scrollTop = chatLog.scrollHeight;
@@ -361,22 +260,13 @@ ${currentContext}
                 savedWords.push(w);
                 localStorage.setItem('lila_words', JSON.stringify(savedWords));
                 renderWordBank();
-                
-                const toast = document.createElement('div');
-                toast.className = "fixed bottom-24 left-1/2 -translate-x-1/2 bg-teal-800 text-white px-6 py-3 rounded-full text-xs font-bold z-[200] shadow-xl";
-                toast.innerText = `"${w}" を覚えたよ！📓`;
-                document.body.appendChild(toast);
-                setTimeout(() => toast.remove(), 2000);
+                const t = document.createElement('div'); t.className = "fixed bottom-24 left-1/2 -translate-x-1/2 bg-teal-800 text-white px-6 py-3 rounded-full text-xs shadow-xl"; t.innerText = `"${w}" を保存！📓`; document.body.appendChild(t); setTimeout(() => t.remove(), 2000);
             }
         }
 
         function renderWordBank() {
             const list = document.getElementById('word-list');
-            list.innerHTML = savedWords.length ? savedWords.map(w => `
-                <div class="bg-teal-50 p-4 rounded-2xl border border-teal-100 flex justify-between items-center mb-3">
-                    <p class="text-sm font-bold text-teal-800">${w}</p>
-                </div>
-            `).join('') : '<p class="text-center text-gray-400 text-sm mt-20">まだ空っぽだよ。＋ボタンで保存してね！</p>';
+            list.innerHTML = savedWords.length ? savedWords.map(w => `<div class="bg-teal-50 p-4 rounded-2xl border border-teal-100 text-sm font-bold text-teal-800 mb-2">${w}</div>`).join('') : '<p class="text-center text-gray-400 text-xs mt-10">空っぽだよ</p>';
         }
 
         function togglePanel(id) { document.getElementById(id).classList.toggle('panel-open'); }
