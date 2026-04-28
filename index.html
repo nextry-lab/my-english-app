@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Lila AI Buddy v3.9.3 ✨</title>
+    <title>Lila AI Buddy v3.9.4 ✨</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&family=Noto+Sans+JP:wght@400;700&display=swap');
@@ -75,8 +75,8 @@
                 <button onclick="saveApiKey()" class="w-full py-4 bg-teal-600 text-white rounded-2xl font-black shadow-lg active:scale-95 transition-all">
                     Connect & Save 🔐
                 </button>
-                <div id="debug-info" class="p-4 bg-gray-50 rounded-2xl text-[10px] text-gray-400 font-mono overflow-auto max-h-32">
-                    Version: 3.9.3 (Universal Path Fix)<br>
+                <div id="debug-info" class="p-4 bg-gray-50 rounded-2xl text-[10px] text-gray-400 font-mono overflow-auto max-h-48">
+                    Version: 3.9.4 (Connectivity Fix)<br>
                     Status: Ready.
                 </div>
             </div>
@@ -125,7 +125,7 @@
                 <div id="online-dot" class="absolute bottom-1 right-1 w-5 h-5 bg-gray-300 border-4 border-white rounded-full shadow-sm"></div>
             </div>
             <h1 class="mt-3 text-xl font-black text-teal-800 tracking-tighter">Lila AI Buddy</h1>
-            <div class="text-[9px] text-teal-600 font-bold tracking-widest mt-1 uppercase bg-teal-50 px-2 py-0.5 rounded-full border border-teal-100" id="mode-badge">AI Plus Mode v3.9.3</div>
+            <div class="text-[9px] text-teal-600 font-bold tracking-widest mt-1 uppercase bg-teal-50 px-2 py-0.5 rounded-full border border-teal-100" id="mode-badge">AI Plus Mode v3.9.4</div>
         </div>
 
         <!-- Mini Lesson & Tools Control -->
@@ -176,7 +176,7 @@
             if (userKey) {
                 apiKeyInput.value = userKey;
                 onlineDot.classList.replace('bg-gray-300', 'bg-green-500');
-                addMessage("コウスケ！404エラーを解決するために、接続回路を最新基準に引き直したよ。今度こそお話しできるはず❤️", "lila");
+                addMessage("コウスケ！404エラー対策を強化したよ。もしエラーが出たら設定画面(⚙️)の下のログを教えてね❤️", "lila");
             }
         };
 
@@ -193,7 +193,7 @@
                 btnText.innerText = `レッスン`;
                 btnIcon.innerText = "✏️";
                 btn.className = "flex-1 px-4 py-2 bg-blue-50 text-blue-600 font-bold text-xs rounded-full border border-blue-200 shadow-sm flex items-center justify-center gap-2";
-                modeBadge.innerText = "AI Plus Mode v3.9.3";
+                modeBadge.innerText = "AI Plus Mode v3.9.4";
             }
         }
 
@@ -233,14 +233,17 @@
             }
         }
 
-        // --- Gemini API 呼び出し (v3.9.3 Universal Fix) ---
+        // --- Gemini API 呼び出し (v3.9.4 Diagnostic Version) ---
         async function callGemini(payload) {
             const apiKey = userKey.trim();
-            // 試行するモデルのリスト
+            if (!apiKey.startsWith("AIza")) {
+                throw new Error("APIキーが正しくない形式のようです（AIzaから始まっていません）。確認してみてね。");
+            }
+
             const models = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro"];
-            const versions = ["v1beta", "v1"];
+            const versions = ["v1", "v1beta"];
             
-            let lastError = null;
+            debugInfo.innerHTML += `<br>--- Connection Trial ---`;
 
             for (let v of versions) {
                 for (let m of models) {
@@ -252,24 +255,32 @@
                             body: JSON.stringify(payload)
                         });
 
-                        if (response.status === 404) continue; // 次の組み合わせを試す
+                        if (response.status === 404) {
+                            debugInfo.innerHTML += `<br>❌ ${v}/${m}: Not Found (404)`;
+                            continue;
+                        }
 
                         if (!response.ok) {
                             const errData = await response.json();
-                            throw new Error(`[${response.status}] ${errData.error?.message || 'Error'}`);
+                            const msg = errData.error?.message || "Error";
+                            debugInfo.innerHTML += `<br>⚠️ ${v}/${m}: ${response.status} ${msg}`;
+                            // 429(Quota) や 403(Permission) はそのまま投げる
+                            if (response.status !== 404) throw new Error(`[${response.status}] ${msg}`);
+                            continue;
                         }
 
-                        console.log(`Connected via ${v}/${m}`);
+                        debugInfo.innerHTML += `<br>✅ Connected via ${v}/${m}`;
                         return await response.json();
                     } catch (e) {
-                        lastError = e;
                         if (e.message.includes("404")) continue;
-                        throw e; // 404以外の重大なエラー（認証エラーなど）は中断して報告
+                        throw e; 
                     }
                 }
             }
             
-            throw new Error(`すべての接続先で 404 が発生しました。APIキーが 'Generative Language API' に対応しているか、AI Studioの設定を確認してください。`);
+            // 全滅した場合の診断
+            debugInfo.innerHTML += `<br>🚨 全エンドポイント 404 エラー`;
+            throw new Error(`接続先が見つかりません(404)。Google AI Studio で 'Generative Language API' が有効化されているか、新しいAPIキーを作成してみてください。`);
         }
 
         async function fetchAI(msg) {
@@ -320,6 +331,7 @@
                 localStorage.setItem('lila_api_key', key);
                 userKey = key;
                 onlineDot.classList.replace('bg-gray-300', 'bg-green-500');
+                debugInfo.innerHTML += `<br>Status: Key updated.`;
                 togglePanel('settings-panel');
                 addMessage("新しい鍵をセットしたよ！❤️", "lila");
             }
