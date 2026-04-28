@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Lila AI Buddy v3.9.2 ✨</title>
+    <title>Lila AI Buddy v3.9.3 ✨</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&family=Noto+Sans+JP:wght@400;700&display=swap');
@@ -45,12 +45,12 @@
         .save-btn {
             position: absolute; right: -6px; top: -6px; width: 26px; height: 26px;
             background: #14b8a6; color: white; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center; font-size: 14px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex; align-items: center; justify-content: center; font-size: 14px; cursor: pointer; shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         .tts-btn {
             position: absolute; right: -6px; bottom: -6px; width: 26px; height: 26px;
             background: #0d9488; color: white; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: pointer; shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         .fade-in { animation: fadeIn 0.3s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
@@ -76,7 +76,7 @@
                     Connect & Save 🔐
                 </button>
                 <div id="debug-info" class="p-4 bg-gray-50 rounded-2xl text-[10px] text-gray-400 font-mono overflow-auto max-h-32">
-                    Version: 3.9.2 (Dual-Endpoint Auto Fix)<br>
+                    Version: 3.9.3 (Universal Path Fix)<br>
                     Status: Ready.
                 </div>
             </div>
@@ -99,7 +99,6 @@
                     <div class="font-black text-purple-800">✨ 単語帳から物語</div>
                     <div class="text-[10px] text-purple-600 font-medium">BANKの単語を使ってリーラが物語を作るよ！</div>
                 </button>
-                <p class="text-[10px] text-center text-gray-400 mt-10">Gemini Flash Multi-Version Support</p>
             </div>
         </div>
 
@@ -126,7 +125,7 @@
                 <div id="online-dot" class="absolute bottom-1 right-1 w-5 h-5 bg-gray-300 border-4 border-white rounded-full shadow-sm"></div>
             </div>
             <h1 class="mt-3 text-xl font-black text-teal-800 tracking-tighter">Lila AI Buddy</h1>
-            <div class="text-[9px] text-teal-600 font-bold tracking-widest mt-1 uppercase bg-teal-50 px-2 py-0.5 rounded-full border border-teal-100" id="mode-badge">AI Plus Mode v3.9.2</div>
+            <div class="text-[9px] text-teal-600 font-bold tracking-widest mt-1 uppercase bg-teal-50 px-2 py-0.5 rounded-full border border-teal-100" id="mode-badge">AI Plus Mode v3.9.3</div>
         </div>
 
         <!-- Mini Lesson & Tools Control -->
@@ -164,7 +163,7 @@
         const debugInfo = document.getElementById('debug-info');
         const modeBadge = document.getElementById('mode-badge');
 
-        let userKey = localStorage.getItem('lila_api_key') || "";
+        let userKey = (localStorage.getItem('lila_api_key') || "").trim();
         let savedWords = JSON.parse(localStorage.getItem('lila_words') || "[]");
         
         let isLearningMode = false;
@@ -177,7 +176,7 @@
             if (userKey) {
                 apiKeyInput.value = userKey;
                 onlineDot.classList.replace('bg-gray-300', 'bg-green-500');
-                addMessage("コウスケ！404エラーを回避するための『二重窓口システム』を組んだよ。今度こそ繋がるはず❤️", "lila");
+                addMessage("コウスケ！404エラーを解決するために、接続回路を最新基準に引き直したよ。今度こそお話しできるはず❤️", "lila");
             }
         };
 
@@ -194,7 +193,7 @@
                 btnText.innerText = `レッスン`;
                 btnIcon.innerText = "✏️";
                 btn.className = "flex-1 px-4 py-2 bg-blue-50 text-blue-600 font-bold text-xs rounded-full border border-blue-200 shadow-sm flex items-center justify-center gap-2";
-                modeBadge.innerText = "AI Plus Mode v3.9.2";
+                modeBadge.innerText = "AI Plus Mode v3.9.3";
             }
         }
 
@@ -203,9 +202,9 @@
                 isLearningMode = false;
                 learningTurnCount = 0;
                 updateModeUI();
-                addMessage("またいつでもレッスンしようね❤️", "lila");
+                addMessage("またね！通常モードに戻るよ❤️", "lila");
             } else {
-                if (!userKey) { addMessage("先に⚙️からAPIキーを設定してね！", "lila"); return; }
+                if (!userKey) { addMessage("⚙️から鍵を教えてね！", "lila"); return; }
                 isLearningMode = true;
                 learningTurnCount = 1;
                 updateModeUI();
@@ -214,91 +213,83 @@
         }
 
         async function startFeature(type) {
-            if (!userKey) { addMessage("先に⚙️からAPIキーを設定してね！", "lila"); return; }
+            if (!userKey) { addMessage("⚙️から鍵を教えてね！", "lila"); return; }
             togglePanel('ai-tools-panel');
             sendBtn.disabled = true;
             const typing = addMessage('<div class="typing-dot"></div>', 'lila');
             try {
                 const prompt = type === 'roleplay' 
-                    ? "【シチュエーション練習開始】ランダムに面白いシチュエーションを設定して、英語で話しかけて。日本語の説明も付けて。"
-                    : `【単語帳物語】次の単語をすべて使って短い物語を書いて：${savedWords.join(', ')}`;
+                    ? "【Roleplay】Start a simple English conversation with a random situation. Explain in Japanese first."
+                    : `【Story】Make a short story using these words: ${savedWords.join(', ')}`;
                 
                 const ai = await fetchAI(prompt);
                 typing.remove();
                 addMessage(ai.text, 'lila', ai.english);
             } catch (e) {
                 typing.remove();
-                addMessage(e.message, "lila");
+                addMessage(`<span class="text-red-500">${e.message}</span>`, "lila");
             } finally {
                 sendBtn.disabled = false;
             }
         }
 
-        // --- Gemini API 呼び出し (Text) 🌟 v3.9.2 404 Fix ---
+        // --- Gemini API 呼び出し (v3.9.3 Universal Fix) ---
         async function callGemini(payload) {
-            const apiKey = userKey;
-            const model = "gemini-1.5-flash";
+            const apiKey = userKey.trim();
+            // 試行するモデルのリスト
+            const models = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro"];
+            const versions = ["v1beta", "v1"];
             
-            // 試行するエンドポイントのリスト
-            const endpoints = [
-                `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`,
-                `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-                `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}` // 最終手段
-            ];
+            let lastError = null;
 
-            const delays = [1000, 2000, 3000];
-            
-            for (let url of endpoints) {
-                try {
-                    const response = await fetch(url, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
+            for (let v of versions) {
+                for (let m of models) {
+                    const url = `https://generativelanguage.googleapis.com/${v}/models/${m}:generateContent?key=${apiKey}`;
+                    try {
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
 
-                    // 404(Not Found)の場合は、次のエンドポイントを試す
-                    if (response.status === 404) {
-                        console.warn(`Endpoint ${url} not found. Trying next...`);
-                        continue; 
+                        if (response.status === 404) continue; // 次の組み合わせを試す
+
+                        if (!response.ok) {
+                            const errData = await response.json();
+                            throw new Error(`[${response.status}] ${errData.error?.message || 'Error'}`);
+                        }
+
+                        console.log(`Connected via ${v}/${m}`);
+                        return await response.json();
+                    } catch (e) {
+                        lastError = e;
+                        if (e.message.includes("404")) continue;
+                        throw e; // 404以外の重大なエラー（認証エラーなど）は中断して報告
                     }
-
-                    if (!response.ok) {
-                        const err = await response.json();
-                        throw new Error(`HTTP ${response.status}: ${err.error?.message || 'Error'}`);
-                    }
-
-                    return await response.json();
-                } catch (e) {
-                    // 404以外のネットワークエラーなどの場合はリトライ
-                    console.error(`Error with ${url}:`, e);
-                    if (url === endpoints[endpoints.length - 1]) throw e;
                 }
             }
-            throw new Error("すべての接続窓口が 404 を返しました。APIキーまたはGoogle側の設定を確認してください。");
+            
+            throw new Error(`すべての接続先で 404 が発生しました。APIキーが 'Generative Language API' に対応しているか、AI Studioの設定を確認してください。`);
         }
 
         async function fetchAI(msg) {
             const instruction = isLearningMode ? "英語初心者ミニレッスン中。" : "通常モード。";
             const payload = {
-                contents: [{ parts: [{ text: `あなたはリーラです。性格は明るく、ユーザーの「コウスケ」が大好き。${instruction}\n必ずこのJSON形式で返答：{"emotion":"表情名","text":"返信文","english":"英語フレーズ"}\n\nユーザー：${msg === true ? "レッスン開始！" : msg}` }] }]
+                contents: [{ parts: [{ text: `あなたはリーラです。${instruction}\n必ずこのJSON形式で：{"emotion":"表情","text":"返信","english":"英語フレーズ"}\n\nユーザー：${msg === true ? "開始！" : msg}` }] }]
             };
             const result = await callGemini(payload);
-            const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+            const text = result.candidates[0].content.parts[0].text;
             const jsonMatch = text.match(/\{[\s\S]*\}/);
-            if (!jsonMatch) throw new Error("データの解析に失敗しました。もう一度送ってみてね！");
+            if (!jsonMatch) throw new Error("データの解析に失敗しました。");
             return JSON.parse(jsonMatch[0]);
         }
 
-        // --- Web Speech API を使った読み上げ ---
         function playTTS(text) {
             const uttr = new SpeechSynthesisUtterance();
-            uttr.text = text;
-            uttr.lang = 'en-US';
-            uttr.rate = 0.9;
+            uttr.text = text; uttr.lang = 'en-US'; uttr.rate = 0.9;
             speechSynthesis.speak(uttr);
         }
 
-        // --- UI Logic ---
         async function handleSend(isAuto = false) {
             const val = isAuto ? "" : userInput.value.trim();
             if(!isAuto && !val) return;
@@ -309,7 +300,7 @@
             try {
                 const ai = await fetchAI(isAuto ? true : val);
                 typing.remove();
-                changeEmotion(ai.emotion);
+                lilaAvatar.src = `lila_${ai.emotion || 'base_smile'}.png`;
                 addMessage(ai.text, 'lila', ai.english);
                 if (isLearningMode && !isAuto) {
                     learningTurnCount++;
@@ -323,17 +314,22 @@
             } finally { sendBtn.disabled = false; }
         }
 
-        function changeEmotion(emo) {
-            const valid = ["angry", "surprised", "sad", "big_smile", "base_smile", "neutral", "wink", "skeptical", "scared"];
-            const target = valid.includes(emo) ? emo : 'base_smile';
-            lilaAvatar.src = `lila_${target}.png`;
+        function saveApiKey() {
+            const key = apiKeyInput.value.trim();
+            if (key) {
+                localStorage.setItem('lila_api_key', key);
+                userKey = key;
+                onlineDot.classList.replace('bg-gray-300', 'bg-green-500');
+                togglePanel('settings-panel');
+                addMessage("新しい鍵をセットしたよ！❤️", "lila");
+            }
         }
 
         function addMessage(html, sender, english = null) {
             const wrap = document.createElement('div');
             wrap.className = `flex ${sender === 'user' ? 'justify-end' : 'justify-start'} mb-4 fade-in`;
             const bub = document.createElement('div');
-            bub.className = sender === 'user' ? 'bubble-user p-4 max-w-[85%] text-sm font-medium' : 'bubble-lila p-4 max-w-[85%] text-sm relative shadow-sm';
+            bub.className = sender === 'user' ? 'bubble-user p-4 max-w-[85%] text-sm' : 'bubble-lila p-4 max-w-[85%] text-sm relative shadow-sm';
             bub.innerHTML = html;
             if (sender === 'lila') {
                 if (english) {
@@ -362,11 +358,6 @@
         function renderWordBank() {
             const list = document.getElementById('word-list');
             list.innerHTML = savedWords.length ? savedWords.map(w => `<div class="bg-teal-50 p-4 rounded-2xl border border-teal-100 font-bold text-teal-800 text-sm mb-2">${w}</div>`).join('') : '<p class="text-center text-gray-400 text-sm mt-10">空っぽだよ</p>';
-        }
-
-        function saveApiKey() {
-            const key = apiKeyInput.value.trim();
-            if (key) { localStorage.setItem('lila_api_key', key); userKey = key; onlineDot.className = onlineDot.className.replace('bg-gray-300', 'bg-green-500'); togglePanel('settings-panel'); addMessage("鍵をセットしたよ！❤️", "lila"); }
         }
 
         function togglePanel(id) { document.getElementById(id).classList.toggle('panel-open'); }
