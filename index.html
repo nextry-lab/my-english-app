@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Lila AI Buddy v3.9.6 ✨</title>
+    <title>Lila AI Buddy v3.9.7 ✨</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&family=Noto+Sans+JP:wght@400;700&display=swap');
@@ -76,7 +76,7 @@
                     Connect & Save 🔐
                 </button>
                 <div id="debug-info" class="p-4 bg-gray-50 rounded-2xl text-[10px] text-gray-400 font-mono overflow-auto max-h-48 border border-gray-100">
-                    Version: 3.9.6 (Reference Fix)<br>
+                    Version: 3.9.7 (Endpoint Fix)<br>
                     Status: Ready.
                 </div>
                 <div class="bg-orange-50 p-4 rounded-2xl border border-orange-100 hidden" id="error-guide">
@@ -133,7 +133,7 @@
                 <div id="online-dot" class="absolute bottom-1 right-1 w-5 h-5 bg-gray-300 border-4 border-white rounded-full shadow-sm"></div>
             </div>
             <h1 class="mt-3 text-xl font-black text-teal-800 tracking-tighter">Lila AI Buddy</h1>
-            <div class="text-[9px] text-teal-600 font-bold tracking-widest mt-1 uppercase bg-teal-50 px-2 py-0.5 rounded-full border border-teal-100" id="mode-badge">AI Plus Mode v3.9.6</div>
+            <div class="text-[9px] text-teal-600 font-bold tracking-widest mt-1 uppercase bg-teal-50 px-2 py-0.5 rounded-full border border-teal-100" id="mode-badge">AI Plus Mode v3.9.7</div>
         </div>
 
         <!-- Mini Lesson & Tools Control -->
@@ -162,7 +162,7 @@
     </div>
 
     <script>
-        // --- 状態変数の定義（エラー回避のため一番上に移動） ---
+        // --- 状態変数の定義 ---
         let userKey = (localStorage.getItem('lila_api_key') || "").trim();
         let savedWords = JSON.parse(localStorage.getItem('lila_words') || "[]");
         let activeModelPath = ""; 
@@ -186,7 +186,7 @@
             if (userKey) {
                 apiKeyInput.value = userKey;
                 onlineDot.classList.replace('bg-gray-300', 'bg-green-500');
-                addMessage("コウスケ！変数の読み込みエラーを修正したよ。今度はスムーズに動くはず❤️", "lila");
+                addMessage("コウスケ！接続URLのバグを修正したよ。今度はバッチリお話しできるはず❤️", "lila");
             }
         };
 
@@ -205,7 +205,7 @@
                 btnText.innerText = `レッスン`;
                 btnIcon.innerText = "✏️";
                 btn.className = "flex-1 px-4 py-2 bg-blue-50 text-blue-600 font-bold text-xs rounded-full border border-blue-200 shadow-sm flex items-center justify-center gap-2";
-                modeBadge.innerText = "AI Plus Mode v3.9.6";
+                modeBadge.innerText = "AI Plus Mode v3.9.7";
             }
         }
 
@@ -245,6 +245,7 @@
             }
         }
 
+        // --- Gemini API 呼び出し (v3.9.7 Endpoint Fixed) ---
         async function callGemini(payload) {
             const apiKey = userKey.trim();
             
@@ -279,8 +280,8 @@
                 }
             }
 
-            const [version, modelName] = activeModelPath.split('/');
-            const url = `https://generativelanguage.googleapis.com/${version}/${modelName}:generateContent?key=${apiKey}`;
+            // 🌟 修正ポイント：activeModelPathをそのまま使って正しいURLを構築
+            const url = `https://generativelanguage.googleapis.com/${activeModelPath}:generateContent?key=${apiKey}`;
             
             const response = await fetch(url, {
                 method: 'POST',
@@ -299,7 +300,7 @@
         async function fetchAI(msg) {
             const instruction = isLearningMode ? "英語初心者ミニレッスン中。" : "通常モード。";
             const payload = {
-                contents: [{ parts: [{ text: `あなたはリーラです。${instruction}\n必ずこのJSON形式で：{"emotion":"表情","text":"返信","english":"英語フレーズ"}\n\nユーザー：${msg === true ? "開始！" : msg}` }] }]
+                contents: [{ parts: [{ text: `あなたはリーラです。${instruction}\n必ずこのJSON形式で：{"emotion":"表情名","text":"返信文","english":"英語フレーズ"}\n\nユーザー：${msg === true ? "開始！" : msg}` }] }]
             };
             const result = await callGemini(payload);
             const text = result.candidates[0].content.parts[0].text;
