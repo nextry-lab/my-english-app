@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Lila AI Buddy v4.0.1 ✨</title>
+    <title>Lila AI Buddy v4.0.3 ✨</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&family=Noto+Sans+JP:wght@400;700&display=swap');
@@ -76,7 +76,7 @@
                     Connect & Save 🔐
                 </button>
                 <div id="debug-info" class="p-4 bg-gray-50 rounded-2xl text-[10px] text-gray-400 font-mono overflow-auto max-h-48 border border-gray-100">
-                    Version: 4.0.1 (Wait & Retry for 503)<br>
+                    Version: 4.0.3 (Bilingual Logic)<br>
                     Status: Ready.
                 </div>
             </div>
@@ -125,7 +125,7 @@
                 <div id="online-dot" class="absolute bottom-1 right-1 w-5 h-5 bg-gray-300 border-4 border-white rounded-full shadow-sm"></div>
             </div>
             <h1 class="mt-3 text-xl font-black text-teal-800 tracking-tighter">Lila AI Buddy</h1>
-            <div class="text-[9px] text-teal-600 font-bold tracking-widest mt-1 uppercase bg-teal-50 px-2 py-0.5 rounded-full border border-teal-100" id="mode-badge">AI Buddy v4.0.1</div>
+            <div class="text-[9px] text-teal-600 font-bold tracking-widest mt-1 uppercase bg-teal-50 px-2 py-0.5 rounded-full border border-teal-100" id="mode-badge">AI Buddy v4.0.3</div>
         </div>
 
         <!-- Mini Lesson & Tools Control -->
@@ -177,7 +177,7 @@
             if (userKey) {
                 apiKeyInput.value = userKey;
                 onlineDot.classList.replace('bg-gray-300', 'bg-green-500');
-                addMessage("コウスケ！Googleが混んでる時に粘り強く頑張る機能を付けたよ！もし止まっても、少し待てば返信するね❤️", "lila");
+                addMessage("I updated the bilingual mode! / バイリンガルモードを更新したよ！英語と日本語の両方で話すね❤️", "lila");
             }
         };
 
@@ -196,7 +196,7 @@
                 btnText.innerText = `ミニレッスン`;
                 btnIcon.innerText = "✏️";
                 btn.className = "flex-1 px-4 py-2 bg-blue-50 text-blue-600 font-bold text-xs rounded-full border border-blue-200 shadow-sm flex items-center justify-center gap-2";
-                modeBadge.innerText = "AI Buddy v4.0.1";
+                modeBadge.innerText = "AI Buddy v4.0.3";
             }
         }
 
@@ -205,9 +205,9 @@
                 isLearningMode = false;
                 learningTurnCount = 0;
                 updateModeUI();
-                addMessage("またね！通常のおしゃべりに戻るよ❤️", "lila");
+                addMessage("Let's go back to chatting! / 通常のおしゃべりに戻るよ❤️", "lila");
             } else {
-                if (!userKey) { addMessage("⚙️から鍵を教えてね！", "lila"); return; }
+                if (!userKey) { addMessage("Please set the key first! / 先に⚙️から鍵を教えてね！", "lila"); return; }
                 isLearningMode = true;
                 learningTurnCount = 1;
                 updateModeUI();
@@ -216,14 +216,14 @@
         }
 
         async function startFeature(type) {
-            if (!userKey) { addMessage("⚙️から鍵を教えてね！", "lila"); return; }
+            if (!userKey) { addMessage("Set key first! / 先に鍵を教えてね！", "lila"); return; }
             togglePanel('ai-tools-panel');
             sendBtn.disabled = true;
             const typing = addMessage('<div class="typing-dot"></div>', 'lila');
             try {
                 const prompt = type === 'roleplay' 
-                    ? "【Roleplay】Start a simple English conversation with a random situation. Explain in Japanese first. Ask a question to Kosuke in English."
-                    : `【Story】Make a short story using these words: ${savedWords.join(', ')}. Include 1-2 useful English phrases in the text.`;
+                    ? "【Roleplay】Start a simple English conversation. Explain in Japanese, then talk in English."
+                    : `【Story】Make a short story using: ${savedWords.join(', ')}. Write in English first, then Japanese translation.`;
                 
                 const ai = await fetchAI(prompt);
                 typing.remove();
@@ -238,91 +238,58 @@
 
         async function callGemini(payload) {
             const apiKey = userKey.trim();
-            
             if (!activeModelPath) {
-                debugInfo.innerHTML += `<br>🔍 Discovering models...`;
                 const versions = ["v1beta", "v1"];
                 let found = false;
-
                 for (let v of versions) {
                     try {
                         const listUrl = `https://generativelanguage.googleapis.com/${v}/models?key=${apiKey}`;
                         const response = await fetch(listUrl);
                         if (response.ok) {
                             const data = await response.json();
-                            const model = data.models.find(m => m.supportedGenerationMethods.includes("generateContent") && m.name.includes("flash")) 
-                                        || data.models.find(m => m.supportedGenerationMethods.includes("generateContent"));
-                            if (model) {
-                                activeModelPath = `${v}/${model.name}`;
-                                debugInfo.innerHTML += `<br>✅ Found: ${activeModelPath}`;
-                                found = true;
-                                break;
-                            }
+                            const model = data.models.find(m => m.supportedGenerationMethods.includes("generateContent") && m.name.includes("flash")) || data.models.find(m => m.supportedGenerationMethods.includes("generateContent"));
+                            if (model) { activeModelPath = `${v}/${model.name}`; found = true; break; }
                         }
                     } catch (e) {}
                 }
-                if (!found) throw new Error("AIモデルが見つかりません。");
+                if (!found) throw new Error("Model not found.");
             }
-
             const url = `https://generativelanguage.googleapis.com/${activeModelPath}:generateContent?key=${apiKey}`;
-            
-            // 🌟 503エラー（混雑）に備えたリトライ処理を強化！
-            const delays = [2000, 4000, 8000, 16000, 32000];
-            
+            const delays = [2000, 4000, 8000];
             for (let i = 0; i <= delays.length; i++) {
                 try {
-                    const response = await fetch(url, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-
-                    if (response.status === 503) {
-                        if (i < delays.length) {
-                            debugInfo.innerHTML += `<br>⚠️ 503: 混雑中。${delays[i]/1000}秒後に再挑戦するよ...`;
-                            await new Promise(res => setTimeout(res, delays[i]));
-                            continue;
-                        }
-                        throw new Error("Googleのサーバーがとても混み合っています。少し時間をおいてから試してみてね😢");
+                    const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    if (response.status === 503 || response.status === 429) {
+                        if (i < delays.length) { await new Promise(res => setTimeout(res, delays[i])); continue; }
                     }
-
-                    if (!response.ok) {
-                        const errData = await response.json();
-                        throw new Error(`[${response.status}] ${errData.error?.message || 'Error'}`);
-                    }
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
                     return await response.json();
-                } catch (e) {
-                    if (i === delays.length) throw e;
-                    if (!e.message.includes("503")) throw e; // 503以外は即座にエラーを投げる
-                }
+                } catch (e) { if (i === delays.length) throw e; }
             }
         }
 
         async function fetchAI(msg) {
-            const instruction = isLearningMode ? 
-                `【英語ミニレッスンモード】あなたはリーラという親しみやすい英語の先生です。コウスケに簡単な英語の質問（3択クイズや短文作成など）を出し、日本語で優しく励ましながら進めてください。全3問構成です。現在は${learningTurnCount}問目です。` : 
-                `【通常モード】日本語で楽しくおしゃべりしつつ、会話の流れに合った自然な英語フレーズを1つ提案してください。`;
+            // 🌟 修正ポイント：英語と日本語の両方で返答させる指示を強化
+            const modePrompt = isLearningMode ? 
+                `【英語ミニレッスンモード】全3問の${learningTurnCount}問目です。簡単な英語の問題を出して。必ず「英語の文章」のあとに「日本語の訳」を添えて。` : 
+                `【通常モード】日本語と英語の両方で楽しくおしゃべりして。必ず「まず英語で話し、その次に日本語の訳を添える（例: Hello! / こんにちは！）」という形式を守って。`;
 
             const payload = {
-                contents: [{ parts: [{ text: `あなたはリーラです。${instruction}\n必ずこのJSON形式で：{"emotion":"表情名","text":"日本語の返信文","english":"会話で使える英語フレーズ"}\n\nユーザー：${msg === true ? "レッスン開始！" : msg}` }] }]
+                contents: [{ parts: [{ text: `あなたはリーラです。${modePrompt}\n必ずこのJSON形式で：{"emotion":"表情名","text":"英語の返信文 / 日本語の返信文","english":"復習用に保存すべき英語フレーズ"}\n\nユーザー：${msg === true ? "レッスン開始！" : msg}` }] }]
             };
             const result = await callGemini(payload);
             const text = result.candidates[0].content.parts[0].text;
             const jsonMatch = text.match(/\{[\s\S]*\}/);
-            if (!jsonMatch) throw new Error("解析失敗");
             return JSON.parse(jsonMatch[0]);
         }
 
         function playTTS(text) {
-            let clean = text.replace(/<[^>]*>?/gm, ''); 
-            clean = clean.replace(/\p{Extended_Pictographic}/gu, '');
-            clean = clean.trim();
+            // 日本語訳( / 以降)を読み上げないようにして、英語学習に集中させる
+            const englishPart = text.split('/')[0] || text;
+            let clean = englishPart.replace(/<[^>]*>?/gm, '').replace(/\p{Extended_Pictographic}/gu, '').trim();
             if (!clean) return;
-
             const uttr = new SpeechSynthesisUtterance();
-            uttr.text = clean;
-            uttr.lang = 'en-US';
-            uttr.rate = 0.9;
+            uttr.text = clean; uttr.lang = 'en-US'; uttr.rate = 0.9;
             speechSynthesis.speak(uttr);
         }
 
@@ -352,14 +319,7 @@
 
         function saveApiKey() {
             const key = apiKeyInput.value.trim();
-            if (key) {
-                localStorage.setItem('lila_api_key', key);
-                userKey = key;
-                activeModelPath = ""; 
-                onlineDot.classList.replace('bg-gray-300', 'bg-green-500');
-                togglePanel('settings-panel');
-                addMessage("鍵をセットしたよ！❤️", "lila");
-            }
+            if (key) { localStorage.setItem('lila_api_key', key); userKey = key; activeModelPath = ""; onlineDot.classList.replace('bg-gray-300', 'bg-green-500'); togglePanel('settings-panel'); addMessage("Key Saved! / 鍵を保存したよ！❤️", "lila"); }
         }
 
         function addMessage(html, sender, english = null) {
@@ -368,30 +328,26 @@
             const bub = document.createElement('div');
             bub.className = sender === 'user' ? 'bubble-user p-4 max-w-[85%] text-sm' : 'bubble-lila p-4 max-w-[85%] text-sm relative shadow-sm';
             
-            let content = `<div>${html}</div>`;
+            // 🌟 英語と日本語の表示スタイルを調整
+            let displayHtml = html;
+            if (sender === 'lila' && html.includes('/')) {
+                const parts = html.split('/');
+                displayHtml = `<div class="font-bold mb-1 leading-tight">${parts[0].trim()}</div><div class="text-[11px] text-gray-500 border-t border-gray-100 mt-2 pt-2">${parts[1].trim()}</div>`;
+            }
+            
+            let content = `<div>${displayHtml}</div>`;
             if (sender === 'lila' && english && english !== "") {
-                content += `
-                    <div class="mt-3 p-3 bg-teal-50 border-l-4 border-teal-500 text-teal-900 rounded-r-xl font-bold italic text-xs flex flex-col gap-1">
-                        <span class="text-[9px] text-teal-600 font-black uppercase tracking-tighter">Recommended Phrase</span>
-                        "${english}"
-                    </div>
-                `;
+                content += `<div class="mt-3 p-3 bg-teal-50 border-l-4 border-teal-500 text-teal-900 rounded-r-xl font-bold italic text-xs flex flex-col gap-1"><span class="text-[9px] text-teal-600 font-black uppercase tracking-tighter">Recommended Phrase</span>"${english}"</div>`;
             }
             bub.innerHTML = content;
             
             if (sender === 'lila') {
                 if (english) {
                     const btn = document.createElement('div'); btn.className = "save-btn"; btn.innerHTML = "＋";
-                    btn.title = "Save to Word Bank";
-                    btn.onclick = (e) => { e.stopPropagation(); saveWord(english); }; 
-                    bub.appendChild(btn);
+                    btn.onclick = (e) => { e.stopPropagation(); saveWord(english); }; bub.appendChild(btn);
                 }
                 const speakBtn = document.createElement('div'); speakBtn.className = "tts-btn"; speakBtn.innerHTML = "📣";
-                speakBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    const speakText = english ? `${html}. English phrase: ${english}` : html;
-                    playTTS(speakText); 
-                };
+                speakBtn.onclick = (e) => { e.stopPropagation(); playTTS(html); };
                 bub.appendChild(speakBtn);
             }
             wrap.appendChild(bub);
@@ -406,18 +362,13 @@
                 localStorage.setItem('lila_words', JSON.stringify(savedWords));
                 renderWordBank();
                 const t = document.createElement('div'); t.className = "fixed bottom-24 left-1/2 -translate-x-1/2 bg-teal-800 text-white px-6 py-3 rounded-full text-xs font-bold shadow-xl z-[999]";
-                t.innerText = `"${w}" を保存！📓`; document.body.appendChild(t); setTimeout(() => t.remove(), 2000);
+                t.innerText = `Saved "${w}"! / 保存したよ！📓`; document.body.appendChild(t); setTimeout(() => t.remove(), 2000);
             }
         }
 
         function renderWordBank() {
             const list = document.getElementById('word-list');
-            list.innerHTML = savedWords.length ? savedWords.map(w => `
-                <div class="bg-white p-4 rounded-2xl border border-teal-100 font-bold text-teal-800 text-sm mb-2 shadow-sm flex justify-between items-center group">
-                    <span>${w}</span>
-                    <button onclick="playTTS('${w.replace(/'/g, "\\'")}')" class="text-teal-400 group-hover:text-teal-600">📣</button>
-                </div>
-            `).join('') : '<p class="text-center text-gray-400 text-sm mt-10">空っぽだよ</p>';
+            list.innerHTML = savedWords.length ? savedWords.map(w => `<div class="bg-white p-4 rounded-2xl border border-teal-100 font-bold text-teal-800 text-sm mb-2 shadow-sm flex justify-between items-center group"><span>${w}</span><button onclick="playTTS('${w.replace(/'/g, "\\'")}')" class="text-teal-400 group-hover:text-teal-600">📣</button></div>`).join('') : '<p class="text-center text-gray-400 text-sm mt-10">Empty Bank / 空っぽだよ</p>';
         }
 
         function togglePanel(id) { document.getElementById(id).classList.toggle('panel-open'); }
